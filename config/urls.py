@@ -20,6 +20,7 @@ urlpatterns = [
     path("api/routers/", include("apps.routers.urls", namespace="routers")),
     path("api/hotspot/", include("apps.hotspot.urls", namespace="hotspot")),
     path("api/tickets/", include("apps.tickets.urls", namespace="tickets")),
+    path("api/scripts/", include("apps.scripts.urls", namespace="scripts")),
 
     # API Schema & Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
