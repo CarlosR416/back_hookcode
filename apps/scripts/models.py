@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from jinja2 import Template
 from apps.routers.models import Router
 
 class ScriptTemplate(models.Model):
@@ -55,3 +56,14 @@ class RouterScriptExecution(models.Model):
         self.output_log = output
         self.completed_at = timezone.now()
         self.save()
+
+    @property
+    def rendered_content(self) -> str:
+        """
+        Renders the script content using Jinja2 with the variables provided.
+        """
+        if not self.template:
+            return ""
+        
+        template = Template(self.template.content)
+        return template.render(**self.variables_used)

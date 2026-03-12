@@ -16,9 +16,17 @@ class RouterScriptExecutionSerializer(serializers.ModelSerializer):
             "router",
             "template",
             "variables_used",
+            "rendered_content",
             "status",
             "output_log",
             "created_at",
             "completed_at",
         ]
-        read_only_fields = ["id", "status", "output_log", "created_at", "completed_at"]
+        read_only_fields = [
+            "id",
+            "rendered_content",
+            "status",
+            "output_log",
+            "created_at",
+            "completed_at",
+        ]
