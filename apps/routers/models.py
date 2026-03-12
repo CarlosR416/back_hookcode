@@ -36,6 +36,19 @@ class Router(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    ROUTEROS_V6 = "v6"
+    ROUTEROS_V7 = "v7"
+    ROUTEROS_VERSION_CHOICES = [
+        (ROUTEROS_V6, "RouterOS v6"),
+        (ROUTEROS_V7, "RouterOS v7"),
+    ]
+    routeros_version = models.CharField(
+        max_length=10,
+        choices=ROUTEROS_VERSION_CHOICES,
+        default=ROUTEROS_V6,
+        verbose_name="RouterOS version",
+    )
+
     class Meta:
         verbose_name = "Router"
         verbose_name_plural = "Routers"

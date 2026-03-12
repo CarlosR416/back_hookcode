@@ -19,6 +19,7 @@ class RouterSerializer(serializers.ModelSerializer):
             "port",
             "api_username",
             "ssl_verify",
+            "routeros_version",
             "is_active",
             "description",
             "created_at",
@@ -39,6 +40,7 @@ class RouterWriteSerializer(serializers.ModelSerializer):
             "api_username",
             "api_password",
             "ssl_verify",
+            "routeros_version",
             "is_active",
             "description",
         ]
