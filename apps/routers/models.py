@@ -1,11 +1,12 @@
 """
-Router model — represents a MikroTik router managed by the system.
+Router models — MikroTik router and user-router associations.
 
 Credentials are stored here. In production, consider using
 a dedicated secrets manager (Vault, AWS Secrets Manager) instead of
 storing passwords in the database.
 """
 
+from django.conf import settings
 from django.db import models
 
 
@@ -56,3 +57,57 @@ class Router(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.host})"
+
+
+class UserRouter(models.Model):
+    """
+    Association between a user and a router, including a role.
+
+    Design notes (SOLID):
+    - SRP: this model ONLY owns the user-router relationship + role.
+      Router keeps connectivity data; User keeps auth data.
+    - OCP: new roles can be added to RouterRole without touching Router or User.
+    - LSP / ISP / DIP: consumers depend on this model via FK, not on concrete
+      User or Router internals.
+
+    Roles
+    -----
+    OWNER  — full CRUD + live actions on the router.
+    VIEWER — read-only access (list, retrieve, ping).
+    """
+
+    class RouterRole(models.TextChoices):
+        OWNER = "owner", "Owner"
+        VIEWER = "viewer", "Viewer"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="user_routers",
+        verbose_name="User",
+    )
+    router = models.ForeignKey(
+        Router,
+        on_delete=models.CASCADE,
+        related_name="user_routers",
+        verbose_name="Router",
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=RouterRole.choices,
+        default=RouterRole.VIEWER,
+        verbose_name="Role",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "User Router"
+        verbose_name_plural = "User Routers"
+        # A user can only have one role per router
+        constraints = [
+            models.UniqueConstraint(fields=["user", "router"], name="unique_user_router")
+        ]
+        ordering = ["user", "router"]
+
+    def __str__(self) -> str:
+        return f"{self.user} → {self.router} [{self.role}]"
