@@ -4,7 +4,7 @@ Serializers for the hotspot application.
 
 from rest_framework import serializers
 
-from .models import HotspotProfile, HotspotUser
+from .models import HotspotProfile, HotspotTemplate, HotspotTemplateFile, HotspotUser
 
 
 class HotspotProfileSerializer(serializers.ModelSerializer):
@@ -55,3 +55,96 @@ class HotspotUserWriteSerializer(serializers.ModelSerializer):
             "password",
             "comment",
         ]
+
+
+# ---------------------------------------------------------------------------
+# HotspotTemplate serializers
+# ---------------------------------------------------------------------------
+
+
+class HotspotTemplateFileSerializer(serializers.ModelSerializer):
+    """Read serializer for a single template file (no content by default)."""
+
+    class Meta:
+        model = HotspotTemplateFile
+        fields = [
+            "id",
+            "filename",
+            "role",
+            "mime_type",
+            "order",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class HotspotTemplateFileDetailSerializer(serializers.ModelSerializer):
+    """Read serializer that includes the full Jinja2 content — used on retrieve."""
+
+    class Meta:
+        model = HotspotTemplateFile
+        fields = [
+            "id",
+            "template",
+            "filename",
+            "role",
+            "content",
+            "mime_type",
+            "order",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class HotspotTemplateFileWriteSerializer(serializers.ModelSerializer):
+    """Write serializer for creating / updating a template file."""
+
+    class Meta:
+        model = HotspotTemplateFile
+        fields = ["template", "filename", "role", "content", "mime_type", "order"]
+
+    def validate_filename(self, value: str) -> str:
+        """Reject filenames with path separators to prevent directory traversal."""
+        if "/" in value or "\\" in value:
+            raise serializers.ValidationError(
+                "Filename must not contain path separators ('/' or '\\')."
+            )
+        return value
+
+
+class HotspotTemplateSerializer(serializers.ModelSerializer):
+    """
+    Read serializer for HotspotTemplate.
+    Includes a lightweight summary of each file (no content bulk).
+    """
+
+    files = HotspotTemplateFileSerializer(many=True, read_only=True)
+    created_by_email = serializers.EmailField(
+        source="created_by.email", read_only=True, default=None
+    )
+
+    class Meta:
+        model = HotspotTemplate
+        fields = [
+            "id",
+            "name",
+            "description",
+            "vendor",
+            "variables",
+            "is_active",
+            "created_by_email",
+            "files",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_by_email", "created_at", "updated_at"]
+
+
+class HotspotTemplateWriteSerializer(serializers.ModelSerializer):
+    """Write serializer — used for create / update of the template header."""
+
+    class Meta:
+        model = HotspotTemplate
+        fields = ["name", "description", "vendor", "variables", "is_active"]
