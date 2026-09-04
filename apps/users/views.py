@@ -9,10 +9,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
+from rest_framework_simplejwt.tokens import RefreshToken
+from drf_spectacular.utils import extend_schema
 
 from core.responses import created_response, success_response
 
-from .serializers import ChangePasswordSerializer, RegisterSerializer, UserSerializer
+from .serializers import ChangePasswordSerializer, RegisterSerializer, UserSerializer, GoogleLoginSerializer
 
 User = get_user_model()
 
@@ -81,3 +83,41 @@ class UserViewSet(GenericViewSet):
         user.set_password(serializer.validated_data["new_password"])
         user.save(update_fields=["password"])
         return success_response({"detail": "Password updated successfully."})
+
+    @extend_schema(
+        request=GoogleLoginSerializer,
+        responses={200: UserSerializer},
+        tags=["auth"]
+    )
+    @action(detail=False, methods=["post"], url_path="google", permission_classes=[AllowAny])
+    def google(self, request: Request) -> Response:
+        """Authenticate using a Firebase ID token from Google Sign-in."""
+        serializer = GoogleLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        decoded_token = serializer.validated_data["firebase_token"]
+        email = decoded_token.get("email")
+        uid = decoded_token.get("uid")
+
+        if not email:
+            return Response(
+                {"error": {"code": "missing_email", "detail": "Email is missing from the Google token."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user, created = User.objects.get_or_create(email=email)
+        
+        if created:
+            if uid:
+                user.username = uid
+            user.set_unusable_password()
+            user.save()
+
+        refresh = RefreshToken.for_user(user)
+
+        return success_response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": UserSerializer(user).data,
+            "is_new_user": created,
+        })

@@ -168,3 +168,7 @@ SPECTACULAR_SETTINGS = {
 # ── MikroTik defaults ───────────────────────────────────────────────────────────
 MIKROTIK_DEFAULT_PORT = config("MIKROTIK_DEFAULT_PORT", default=443, cast=int)
 MIKROTIK_SSL_VERIFY = config("MIKROTIK_SSL_VERIFY", default=False, cast=bool)
+
+
+# ── Firebase ────────────────────────────────────────────────────────────────────
+FIREBASE_CREDENTIALS_PATH = config("FIREBASE_CREDENTIALS_PATH", default="")
