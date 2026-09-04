@@ -3,6 +3,7 @@ Serializers for the users application.
 """
 
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 User = get_user_model()
@@ -29,7 +30,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs: dict) -> dict:
         if attrs["password"] != attrs.pop("password_confirm"):
-            raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
+            raise serializers.ValidationError({"password_confirm": _("Passwords do not match.")})
         return attrs
 
     def create(self, validated_data: dict) -> User:
@@ -46,6 +47,6 @@ class ChangePasswordSerializer(serializers.Serializer):
     def validate(self, attrs: dict) -> dict:
         if attrs["new_password"] != attrs["new_password_confirm"]:
             raise serializers.ValidationError(
-                {"new_password_confirm": "New passwords do not match."}
+                {"new_password_confirm": _("New passwords do not match.")}
             )
         return attrs

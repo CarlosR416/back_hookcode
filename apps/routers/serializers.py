@@ -2,6 +2,7 @@
 Serializers for the routers application.
 """
 
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from .models import Router, UserRouter
@@ -92,7 +93,7 @@ class UserRouterWriteSerializer(serializers.ModelSerializer):
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
             raise serializers.ValidationError(
-                "This user already has a role assigned for the selected router."
+                _("This user already has a role assigned for the selected router.")
             )
         return attrs
 

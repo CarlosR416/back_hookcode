@@ -2,6 +2,7 @@
 Views for the tickets application.
 """
 
+from django.utils.translation import gettext as _
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -92,7 +93,8 @@ class TicketViewSet(ModelViewSet):
 
         if ticket.status != Ticket.Status.PENDING:
             return error_response(
-                f"Only PENDING tickets can be cancelled. Current status: {ticket.status}",
+                _("Only PENDING tickets can be cancelled. Current status: %(status)s")
+                % {"status": ticket.status},
                 code="invalid_status",
             )
 

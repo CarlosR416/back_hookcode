@@ -3,6 +3,7 @@ Views for the users application.
 """
 
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext as _
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -74,10 +75,10 @@ class UserViewSet(GenericViewSet):
         user = request.user
         if not user.check_password(serializer.validated_data["old_password"]):
             return Response(
-                {"error": {"code": "wrong_password", "detail": "Old password is incorrect."}},
+                {"error": {"code": "wrong_password", "detail": _("Old password is incorrect.")}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         user.set_password(serializer.validated_data["new_password"])
         user.save(update_fields=["password"])
-        return success_response({"detail": "Password updated successfully."})
+        return success_response({"detail": _("Password updated successfully.")})

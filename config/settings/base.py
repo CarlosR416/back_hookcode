@@ -6,6 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from decouple import Csv, config
+from django.utils.translation import gettext_lazy as _
 
 # ── Paths ───────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -50,6 +51,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -107,7 +109,14 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # ── Internationalisation ────────────────────────────────────────────────────────
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
+LANGUAGES = [
+    ("en", _("English")),
+    ("es", _("Spanish")),
+]
+LOCALE_PATHS = [
+    BASE_DIR / "locale",
+]
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True

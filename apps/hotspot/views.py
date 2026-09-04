@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from django.http import HttpResponse
+from django.utils.translation import gettext as _
 
 from core.responses import created_response, success_response
 from services.mikrotik.client import MikroTikClient
@@ -152,7 +153,7 @@ class HotspotUserViewSet(ModelViewSet):
         router_id = request.query_params.get("router")
         if not router_id:
             return Response(
-                {"error": {"code": "missing_param", "detail": "'router' query param is required."}},
+                {"error": {"code": "missing_param", "detail": _("'router' query param is required.")}},
                 status=400,
             )
         router = Router.objects.get(pk=router_id)
