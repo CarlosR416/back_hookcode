@@ -2,6 +2,7 @@
 Serializers for the hotspot application.
 """
 
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from .models import HotspotProfile, HotspotTemplate, HotspotTemplateFile, HotspotUser
@@ -109,7 +110,7 @@ class HotspotTemplateFileWriteSerializer(serializers.ModelSerializer):
         """Reject filenames with path separators to prevent directory traversal."""
         if "/" in value or "\\" in value:
             raise serializers.ValidationError(
-                "Filename must not contain path separators ('/' or '\\')."
+                _("Filename must not contain path separators ('/' or '\\').")
             )
         return value
 

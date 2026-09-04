@@ -9,6 +9,7 @@ Design (SOLID / ISP):
   from the concrete User model (DIP).
 """
 
+from django.utils.translation import gettext_lazy as _
 from rest_framework.permissions import BasePermission, IsAuthenticated
 
 from .models import UserRouter
@@ -49,7 +50,7 @@ class IsRouterOwner(BasePermission):
     Use for write operations (create, update, delete, live actions).
     """
 
-    message = "You must be the owner of this router to perform this action."
+    message = _("You must be the owner of this router to perform this action.")
 
     def has_permission(self, request, view) -> bool:
         return bool(request.user and request.user.is_authenticated)
@@ -67,7 +68,7 @@ class IsRouterMember(BasePermission):
     Use for read-only operations (retrieve, ping, resource, interfaces).
     """
 
-    message = "You do not have access to this router."
+    message = _("You do not have access to this router.")
 
     def has_permission(self, request, view) -> bool:
         return bool(request.user and request.user.is_authenticated)
