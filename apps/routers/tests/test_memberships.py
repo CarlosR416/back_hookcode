@@ -46,6 +46,8 @@ class RouterMembershipsTests(APITestCase):
         }
         response = self.client.post(self.memberships_url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("data", response.data)
+        self.assertEqual(response.data["data"]["user_email"], self.member.email)
         self.assertTrue(
             UserRouter.objects.filter(
                 user=self.member, router=self.router, role=UserRouter.RouterRole.VIEWER
@@ -60,6 +62,8 @@ class RouterMembershipsTests(APITestCase):
         }
         response = self.client.post(self.memberships_url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("data", response.data)
+        self.assertEqual(response.data["data"]["user_email"], self.admin.email)
         self.assertTrue(
             UserRouter.objects.filter(
                 user=self.admin, router=self.router, role=UserRouter.RouterRole.OWNER
