@@ -2,10 +2,13 @@
 Serializers for the routers application.
 """
 
+from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from .models import Router, UserRouter
+
+User = get_user_model()
 
 
 class RouterSerializer(serializers.ModelSerializer):
@@ -76,24 +79,22 @@ class UserRouterWriteSerializer(serializers.ModelSerializer):
     """
     Write serializer for creating / updating user-router associations.
 
-    The `user` field defaults to the requesting user when not provided
-    (set in the view via `perform_create`).
+    The `user` field defaults to the requesting user when not explicitly provided.
     """
+
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        default=serializers.CurrentUserDefault(),
+    )
 
     class Meta:
         model = UserRouter
-        fields = ["router", "role"]
-
-    def validate(self, attrs):
-        """Prevent duplicate user-router entries at the serializer level."""
-        user = self.context["request"].user
-        router = attrs["router"]
-        qs = UserRouter.objects.filter(user=user, router=router)
-        if self.instance:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
-            raise serializers.ValidationError(
-                _("This user already has a role assigned for the selected router.")
+        fields = ["user", "router", "role"]
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=UserRouter.objects.all(),
+                fields=["user", "router"],
+                message=_("This user already has a role assigned for the selected router."),
             )
-        return attrs
+        ]
 

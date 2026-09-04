@@ -25,7 +25,7 @@ shell:  ## Open the Django shell (requires ipython)
 	$(DJANGO_MANAGE) shell_plus --ipython
 
 test:  ## Run test suite
-	$(DJANGO_MANAGE) test apps/ --verbosity=2
+	$(DJANGO_MANAGE) test apps/ --keepdb --verbosity=2
 
 check:  ## Validate Django configuration
 	$(DJANGO_MANAGE) check
