@@ -61,6 +61,8 @@ class RouterPermissionsTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("data", response.data)
+        self.assertEqual(response.data["data"]["name"], "Owner Updated Router")
         self.router.refresh_from_db()
         self.assertEqual(self.router.name, "Owner Updated Router")
 
@@ -79,3 +81,35 @@ class RouterPermissionsTests(APITestCase):
         self.client.force_authenticate(user=self.unrelated)
         response = self.client.get(self.router_detail_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_retrieve_router_envelope(self):
+        """Router retrieve endpoint wraps representation in a data envelope."""
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.get(self.router_detail_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("data", response.data)
+        self.assertEqual(response.data["data"]["id"], self.router.pk)
+
+    def test_create_router_auto_owner_and_envelope(self):
+        """Creating a router returns data envelope and assigns user as OWNER."""
+        self.client.force_authenticate(user=self.unrelated)
+        payload = {
+            "name": "New Router by Unrelated",
+            "host": "10.0.0.1",
+            "port": 443,
+            "api_username": "admin",
+            "api_password": "securepassword",
+        }
+        create_url = reverse("routers:routers-list")
+        response = self.client.post(create_url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("data", response.data)
+        self.assertEqual(response.data["data"]["name"], "New Router by Unrelated")
+        new_router_id = response.data["data"]["id"]
+        self.assertTrue(
+            UserRouter.objects.filter(
+                user=self.unrelated,
+                router_id=new_router_id,
+                role=UserRouter.RouterRole.OWNER,
+            ).exists()
+        )

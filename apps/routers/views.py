@@ -12,8 +12,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from core.mixins import ActionPermissionsMixin
-from core.responses import success_response
+from core.mixins import ActionPermissionsMixin, StandardResponseMixin
+from core.responses import created_response, no_content_response, success_response
 
 from services.mikrotik.client import MikroTikClient
 from services.mikrotik.router import RouterService
@@ -28,7 +28,7 @@ from .serializers import (
 )
 
 
-class RouterViewSet(ActionPermissionsMixin, ModelViewSet):
+class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet):
     """
     CRUD endpoints for registered MikroTik routers.
 
@@ -81,6 +81,15 @@ class RouterViewSet(ActionPermissionsMixin, ModelViewSet):
         if self.action in ["create", "update", "partial_update"]:
             return RouterWriteSerializer
         return RouterSerializer
+
+    def perform_create(self, serializer: RouterWriteSerializer) -> None:
+        """Create the router and automatically assign creator as OWNER."""
+        router = serializer.save()
+        UserRouter.objects.create(
+            user=self.request.user,
+            router=router,
+            role=UserRouter.RouterRole.OWNER,
+        )
 
     def _get_service(self, router: Router) -> RouterService:
         """Build a RouterService for the given router instance."""
@@ -179,10 +188,7 @@ class UserRouterViewSet(ActionPermissionsMixin, GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
-        return Response(
-            UserRouterSerializer(instance).data,
-            status=status.HTTP_201_CREATED,
-        )
+        return created_response(UserRouterSerializer(instance).data)
 
     def update(self, request: Request, pk: int | None = None, **kwargs) -> Response:
         """Update (replace) a membership's role (admin only)."""
@@ -200,4 +206,4 @@ class UserRouterViewSet(ActionPermissionsMixin, GenericViewSet):
         """Remove a user-router membership (admin only)."""
         instance = self.get_object()
         instance.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return no_content_response()

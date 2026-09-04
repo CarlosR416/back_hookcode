@@ -40,6 +40,8 @@ class HotspotTemplatesTests(APITestCase):
         }
         response = self.client.post(self.template_files_url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("data", response.data)
+        self.assertEqual(response.data["data"]["filename"], "login.html")
         self.assertTrue(
             HotspotTemplateFile.objects.filter(
                 template=self.template, filename="login.html"

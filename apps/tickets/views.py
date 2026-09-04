@@ -10,6 +10,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from core.mixins import StandardResponseMixin
 from core.responses import created_response, error_response, success_response
 
 from .models import Ticket
@@ -17,7 +18,7 @@ from .serializers import TicketActivateSerializer, TicketBulkGenerateSerializer,
 from .services import activate_ticket, generate_tickets
 
 
-class TicketViewSet(ModelViewSet):
+class TicketViewSet(StandardResponseMixin, ModelViewSet):
     """
     Ticket management endpoints.
 
