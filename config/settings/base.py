@@ -4,6 +4,7 @@ Django base settings shared across all environments.
 
 from datetime import timedelta
 from pathlib import Path
+import sys
 
 from decouple import Csv, config
 from django.utils.translation import gettext_lazy as _
@@ -106,6 +107,12 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+# Fast password hasher for test runs only (does not affect dev or prod)
+if "test" in sys.argv:
+    PASSWORD_HASHERS = [
+        "django.contrib.auth.hashers.MD5PasswordHasher",
+    ]
 
 
 # ── Internationalisation ────────────────────────────────────────────────────────

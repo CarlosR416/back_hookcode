@@ -178,11 +178,9 @@ class UserRouterViewSet(ActionPermissionsMixin, GenericViewSet):
         """Create a user-router membership (admin only)."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # Staff can assign any user; if 'user' is not in payload default to request.user
-        user = request.data.get("user") or request.user
-        serializer.save(user=user)
+        instance = serializer.save()
         return Response(
-            UserRouterSerializer(serializer.instance).data,
+            UserRouterSerializer(instance).data,
             status=status.HTTP_201_CREATED,
         )
 

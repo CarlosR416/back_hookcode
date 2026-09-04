@@ -1,0 +1,3 @@
+"""
+Hotspot application tests package.
+"""

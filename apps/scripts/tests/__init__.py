@@ -1,0 +1,3 @@
+"""
+Scripts application tests package.
+"""

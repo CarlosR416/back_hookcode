@@ -1,5 +1,5 @@
 """
-Tests for the hotspot application, including session querying, template files, and i18n messages.
+Sub-domain tests: Internationalization (i18n) for Hotspot Domain.
 """
 
 from django.contrib.auth import get_user_model
@@ -7,25 +7,28 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import HotspotTemplate
+from apps.hotspot.models import HotspotTemplate
 
 User = get_user_model()
 
 
-class HotspotDomainTests(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
+class HotspotI18nTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
             username="hotspotadmin",
             email="hotspot@example.com",
             password="hotspotpass123",
         )
-        self.client.force_authenticate(user=self.user)
-        self.sessions_url = reverse("hotspot:hotspot-users-sessions")
-        self.template = HotspotTemplate.objects.create(
+        cls.sessions_url = reverse("hotspot:hotspot-users-sessions")
+        cls.template = HotspotTemplate.objects.create(
             name="Default Template",
-            created_by=self.user,
+            created_by=cls.user,
         )
-        self.template_files_url = reverse("hotspot:hotspot-template-files-list")
+        cls.template_files_url = reverse("hotspot:hotspot-template-files-list")
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.user)
 
     def test_hotspot_missing_param_in_spanish(self):
         """Query parameter validation error should be translated to Spanish."""

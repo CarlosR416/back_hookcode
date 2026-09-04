@@ -1,5 +1,5 @@
 """
-Tests for the users application, including i18n and authentication flows.
+Sub-domain tests: Internationalization (i18n) for Users Domain.
 """
 
 from unittest.mock import patch
@@ -12,15 +12,20 @@ from rest_framework.test import APITestCase
 User = get_user_model()
 
 
-class UserAuthenticationI18nTests(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            username="testuser",
-            email="testuser@example.com",
-            password="oldpassword123",
+class UserI18nTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username="i18nuser",
+            email="i18nuser@example.com",
+            password="InitialPassword123!",
         )
-        self.register_url = reverse("auth:users-register")
-        self.change_password_url = reverse("auth:users-change-password")
+        cls.register_url = reverse("auth:users-register")
+        cls.change_password_url = reverse("auth:users-change-password")
+        cls.google_auth_url = reverse("auth:users-google")
+
+    def setUp(self):
+        self.user.refresh_from_db()
 
     def test_register_password_mismatch_in_spanish(self):
         """When Accept-Language is 'es', validation messages should be in Spanish."""
@@ -87,7 +92,7 @@ class UserAuthenticationI18nTests(APITestCase):
         """Custom endpoint success messages should be localized to Spanish."""
         self.client.force_authenticate(user=self.user)
         payload = {
-            "old_password": "oldpassword123",
+            "old_password": "InitialPassword123!",
             "new_password": "NewSecretPassword123!",
             "new_password_confirm": "NewSecretPassword123!",
         }
@@ -108,7 +113,7 @@ class UserAuthenticationI18nTests(APITestCase):
         """Custom endpoint success messages should be in English by default or when requested."""
         self.client.force_authenticate(user=self.user)
         payload = {
-            "old_password": "oldpassword123",
+            "old_password": "InitialPassword123!",
             "new_password": "NewSecretPassword123!",
             "new_password_confirm": "NewSecretPassword123!",
         }
@@ -146,9 +151,8 @@ class UserAuthenticationI18nTests(APITestCase):
     def test_google_login_missing_email_in_spanish(self, mock_verify):
         """Google login missing email message should be in Spanish."""
         mock_verify.return_value = {"uid": "google-user-123"}
-        url = reverse("auth:users-google")
         response = self.client.post(
-            url,
+            self.google_auth_url,
             data={"firebase_token": "valid-token-no-email"},
             format="json",
             HTTP_ACCEPT_LANGUAGE="es",
@@ -164,9 +168,8 @@ class UserAuthenticationI18nTests(APITestCase):
     def test_google_login_missing_email_in_english(self, mock_verify):
         """Google login missing email message should be in English."""
         mock_verify.return_value = {"uid": "google-user-123"}
-        url = reverse("auth:users-google")
         response = self.client.post(
-            url,
+            self.google_auth_url,
             data={"firebase_token": "valid-token-no-email"},
             format="json",
             HTTP_ACCEPT_LANGUAGE="en",
