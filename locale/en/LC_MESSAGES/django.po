@@ -1,0 +1,78 @@
+# WiFi Tickets API English Translation Catalog.
+# Copyright (C) 2026 WiFi Tickets
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: WiFi Tickets 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-04 01:42+0000\n"
+"PO-Revision-Date: 2026-09-04 01:25+0000\n"
+"Last-Translator: Antigravity\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: apps/hotspot/serializers.py:113
+msgid "Filename must not contain path separators ('/' or '\\')."
+msgstr "Filename must not contain path separators ('/' or '\\')."
+
+#: apps/hotspot/views.py:156
+msgid "'router' query param is required."
+msgstr "'router' query param is required."
+
+#: apps/routers/permissions.py:53
+msgid "You must be the owner of this router to perform this action."
+msgstr "You must be the owner of this router to perform this action."
+
+#: apps/routers/permissions.py:71
+msgid "You do not have access to this router."
+msgstr "You do not have access to this router."
+
+#: apps/routers/serializers.py:96
+msgid "This user already has a role assigned for the selected router."
+msgstr "This user already has a role assigned for the selected router."
+
+#: apps/tickets/views.py:96
+#, python-format
+msgid "Only PENDING tickets can be cancelled. Current status: %(status)s"
+msgstr "Only PENDING tickets can be cancelled. Current status: %(status)s"
+
+#: apps/users/firebase.py:18
+#, python-format
+msgid "Invalid Firebase ID token: %(error)s"
+msgstr "Invalid Firebase ID token: %(error)s"
+
+#: apps/users/serializers.py:33
+msgid "Passwords do not match."
+msgstr "Passwords do not match."
+
+#: apps/users/serializers.py:50
+msgid "New passwords do not match."
+msgstr "New passwords do not match."
+
+#: apps/users/serializers.py:60
+msgid "The Firebase ID token obtained from Google Sign-In."
+msgstr "The Firebase ID token obtained from Google Sign-In."
+
+#: apps/users/views.py:80
+msgid "Old password is incorrect."
+msgstr "Old password is incorrect."
+
+#: apps/users/views.py:86
+msgid "Password updated successfully."
+msgstr "Password updated successfully."
+
+#: apps/users/views.py:105
+msgid "Email is missing from the Google token."
+msgstr "Email is missing from the Google token."
+
+#: config/settings/base.py:114
+msgid "English"
+msgstr "English"
+
+#: config/settings/base.py:115
+msgid "Spanish"
+msgstr "Spanish"
