@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: WiFi Tickets 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-04 01:24+0000\n"
+"POT-Creation-Date: 2026-09-04 01:42+0000\n"
 "PO-Revision-Date: 2026-09-04 01:25+0000\n"
 "Last-Translator: Antigravity\n"
 "Language-Team: English\n"
@@ -40,6 +40,11 @@ msgstr "This user already has a role assigned for the selected router."
 msgid "Only PENDING tickets can be cancelled. Current status: %(status)s"
 msgstr "Only PENDING tickets can be cancelled. Current status: %(status)s"
 
+#: apps/users/firebase.py:18
+#, python-format
+msgid "Invalid Firebase ID token: %(error)s"
+msgstr "Invalid Firebase ID token: %(error)s"
+
 #: apps/users/serializers.py:33
 msgid "Passwords do not match."
 msgstr "Passwords do not match."
@@ -48,13 +53,21 @@ msgstr "Passwords do not match."
 msgid "New passwords do not match."
 msgstr "New passwords do not match."
 
-#: apps/users/views.py:78
+#: apps/users/serializers.py:60
+msgid "The Firebase ID token obtained from Google Sign-In."
+msgstr "The Firebase ID token obtained from Google Sign-In."
+
+#: apps/users/views.py:80
 msgid "Old password is incorrect."
 msgstr "Old password is incorrect."
 
-#: apps/users/views.py:84
+#: apps/users/views.py:86
 msgid "Password updated successfully."
 msgstr "Password updated successfully."
+
+#: apps/users/views.py:105
+msgid "Email is missing from the Google token."
+msgstr "Email is missing from the Google token."
 
 #: config/settings/base.py:114
 msgid "English"

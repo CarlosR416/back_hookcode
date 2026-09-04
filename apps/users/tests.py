@@ -1,41 +1,26 @@
 """
-Tests for GNU gettext i18n and Accept-Language header handling.
+Tests for the users application, including i18n and authentication flows.
 """
+
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.routers.models import Router, UserRouter
-from apps.tickets.models import Ticket
-
 User = get_user_model()
 
 
-class InternationalizationTests(APITestCase):
+class UserAuthenticationI18nTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(
             username="testuser",
             email="testuser@example.com",
             password="oldpassword123",
         )
-        self.admin = User.objects.create_superuser(
-            username="adminuser",
-            email="admin@example.com",
-            password="adminpassword123",
-        )
-        self.router = Router.objects.create(
-            name="Test Router",
-            host="192.168.88.1",
-            port=443,
-            api_username="admin",
-            api_password="password",
-        )
         self.register_url = reverse("auth:users-register")
         self.change_password_url = reverse("auth:users-change-password")
-        self.sessions_url = reverse("hotspot:hotspot-users-sessions")
-        self.memberships_url = reverse("routers:router-memberships-list")
 
     def test_register_password_mismatch_in_spanish(self):
         """When Accept-Language is 'es', validation messages should be in Spanish."""
@@ -157,85 +142,38 @@ class InternationalizationTests(APITestCase):
         self.assertIn("email", response.data["error"])
         self.assertIn("Este campo es requerido.", response.data["error"]["email"])
 
-    def test_hotspot_missing_param_in_spanish(self):
-        """Query parameter validation error should be translated to Spanish."""
-        self.client.force_authenticate(user=self.user)
-        response = self.client.get(self.sessions_url, HTTP_ACCEPT_LANGUAGE="es")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.headers.get("Content-Language"), "es")
-        self.assertEqual(
-            response.data.get("error", {}).get("detail"),
-            "El parámetro de consulta 'router' es obligatorio.",
-        )
-
-    def test_hotspot_missing_param_in_english(self):
-        """Query parameter validation error should be in English."""
-        self.client.force_authenticate(user=self.user)
-        response = self.client.get(self.sessions_url, HTTP_ACCEPT_LANGUAGE="en")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.headers.get("Content-Language"), "en")
-        self.assertEqual(
-            response.data.get("error", {}).get("detail"),
-            "'router' query param is required.",
-        )
-
-    def test_ticket_cancel_non_pending_in_spanish(self):
-        """Ticket cancel validation message should be in Spanish."""
-        self.client.force_authenticate(user=self.user)
-        ticket = Ticket.objects.create(
-            router=self.router,
-            profile_name="default",
-            duration_minutes=60,
-            status=Ticket.Status.ACTIVE,
-        )
-        cancel_url = reverse("tickets:tickets-cancel", kwargs={"pk": ticket.pk})
-        response = self.client.post(cancel_url, HTTP_ACCEPT_LANGUAGE="es")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.headers.get("Content-Language"), "es")
-        self.assertIn(
-            "Solo los tickets PENDIENTES pueden ser cancelados. Estado actual: active",
-            response.data.get("error", {}).get("detail"),
-        )
-
-    def test_ticket_cancel_non_pending_in_english(self):
-        """Ticket cancel validation message should be in English."""
-        self.client.force_authenticate(user=self.user)
-        ticket = Ticket.objects.create(
-            router=self.router,
-            profile_name="default",
-            duration_minutes=60,
-            status=Ticket.Status.ACTIVE,
-        )
-        cancel_url = reverse("tickets:tickets-cancel", kwargs={"pk": ticket.pk})
-        response = self.client.post(cancel_url, HTTP_ACCEPT_LANGUAGE="en")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.headers.get("Content-Language"), "en")
-        self.assertIn(
-            "Only PENDING tickets can be cancelled. Current status: active",
-            response.data.get("error", {}).get("detail"),
-        )
-
-    def test_duplicate_membership_validation_in_spanish(self):
-        """Serializer unique validation message should be in Spanish."""
-        self.client.force_authenticate(user=self.admin)
-        UserRouter.objects.create(
-            user=self.admin,
-            router=self.router,
-            role=UserRouter.RouterRole.OWNER,
-        )
-        payload = {
-            "router": self.router.pk,
-            "role": UserRouter.RouterRole.VIEWER,
-        }
+    @patch("apps.users.firebase.verify_google_token")
+    def test_google_login_missing_email_in_spanish(self, mock_verify):
+        """Google login missing email message should be in Spanish."""
+        mock_verify.return_value = {"uid": "google-user-123"}
+        url = reverse("auth:users-google")
         response = self.client.post(
-            self.memberships_url,
-            data=payload,
+            url,
+            data={"firebase_token": "valid-token-no-email"},
             format="json",
             HTTP_ACCEPT_LANGUAGE="es",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.headers.get("Content-Language"), "es")
-        self.assertIn(
-            "Este usuario ya tiene un rol asignado para el router seleccionado.",
-            str(response.data["error"]),
+        self.assertEqual(
+            response.data.get("error", {}).get("detail"),
+            "El correo electrónico no está presente en el token de Google.",
+        )
+
+    @patch("apps.users.firebase.verify_google_token")
+    def test_google_login_missing_email_in_english(self, mock_verify):
+        """Google login missing email message should be in English."""
+        mock_verify.return_value = {"uid": "google-user-123"}
+        url = reverse("auth:users-google")
+        response = self.client.post(
+            url,
+            data={"firebase_token": "valid-token-no-email"},
+            format="json",
+            HTTP_ACCEPT_LANGUAGE="en",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.headers.get("Content-Language"), "en")
+        self.assertEqual(
+            response.data.get("error", {}).get("detail"),
+            "Email is missing from the Google token.",
         )

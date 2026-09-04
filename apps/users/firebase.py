@@ -1,6 +1,7 @@
 """
 Firebase utility functions for authenticating users.
 """
+from django.utils.translation import gettext as _
 from firebase_admin import auth
 from rest_framework.exceptions import AuthenticationFailed
 
@@ -14,4 +15,4 @@ def verify_google_token(token: str) -> dict:
         decoded_token = auth.verify_id_token(token)
         return decoded_token
     except Exception as e:
-        raise AuthenticationFailed(f"Invalid Firebase ID Token: {str(e)}")
+        raise AuthenticationFailed(_("Invalid Firebase ID token: %(error)s") % {"error": str(e)})

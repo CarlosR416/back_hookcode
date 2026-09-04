@@ -102,7 +102,7 @@ class UserViewSet(GenericViewSet):
 
         if not email:
             return Response(
-                {"error": {"code": "missing_email", "detail": "Email is missing from the Google token."}},
+                {"error": {"code": "missing_email", "detail": _("Email is missing from the Google token.")}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
