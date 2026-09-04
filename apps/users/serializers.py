@@ -55,7 +55,10 @@ class ChangePasswordSerializer(serializers.Serializer):
 class GoogleLoginSerializer(serializers.Serializer):
     """Serializer for Google Firebase login token validation."""
 
-    firebase_token = serializers.CharField(required=True, help_text="The Firebase ID token obtained from Google Sign-In.")
+    firebase_token = serializers.CharField(
+        required=True,
+        help_text=_("The Firebase ID token obtained from Google Sign-In."),
+    )
 
     def validate_firebase_token(self, value):
         from .firebase import verify_google_token

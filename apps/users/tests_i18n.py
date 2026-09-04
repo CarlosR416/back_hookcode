@@ -2,6 +2,7 @@
 Tests for GNU gettext i18n and Accept-Language header handling.
 """
 
+from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
@@ -239,3 +240,40 @@ class InternationalizationTests(APITestCase):
             "Este usuario ya tiene un rol asignado para el router seleccionado.",
             str(response.data["error"]),
         )
+
+    @patch("apps.users.firebase.verify_google_token")
+    def test_google_login_missing_email_in_spanish(self, mock_verify):
+        """Google login missing email message should be in Spanish."""
+        mock_verify.return_value = {"uid": "google-user-123"}
+        url = reverse("auth:users-google")
+        response = self.client.post(
+            url,
+            data={"firebase_token": "valid-token-no-email"},
+            format="json",
+            HTTP_ACCEPT_LANGUAGE="es",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.headers.get("Content-Language"), "es")
+        self.assertEqual(
+            response.data.get("error", {}).get("detail"),
+            "El correo electrónico no está presente en el token de Google.",
+        )
+
+    @patch("apps.users.firebase.verify_google_token")
+    def test_google_login_missing_email_in_english(self, mock_verify):
+        """Google login missing email message should be in English."""
+        mock_verify.return_value = {"uid": "google-user-123"}
+        url = reverse("auth:users-google")
+        response = self.client.post(
+            url,
+            data={"firebase_token": "valid-token-no-email"},
+            format="json",
+            HTTP_ACCEPT_LANGUAGE="en",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.headers.get("Content-Language"), "en")
+        self.assertEqual(
+            response.data.get("error", {}).get("detail"),
+            "Email is missing from the Google token.",
+        )
+
