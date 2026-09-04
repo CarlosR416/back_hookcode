@@ -50,3 +50,13 @@ class ChangePasswordSerializer(serializers.Serializer):
                 {"new_password_confirm": _("New passwords do not match.")}
             )
         return attrs
+
+
+class GoogleLoginSerializer(serializers.Serializer):
+    """Serializer for Google Firebase login token validation."""
+
+    firebase_token = serializers.CharField(required=True, help_text="The Firebase ID token obtained from Google Sign-In.")
+
+    def validate_firebase_token(self, value):
+        from .firebase import verify_google_token
+        return verify_google_token(value)
