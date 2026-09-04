@@ -38,6 +38,7 @@ class RouterWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Router
         fields = [
+            "id",
             "name",
             "host",
             "port",
@@ -48,6 +49,7 @@ class RouterWriteSerializer(serializers.ModelSerializer):
             "is_active",
             "description",
         ]
+        read_only_fields = ["id"]
         extra_kwargs = {
             "api_password": {"write_only": True},
         }

@@ -13,7 +13,7 @@ from rest_framework.viewsets import GenericViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema
 
-from core.responses import created_response, success_response
+from core.responses import created_response, error_response, success_response
 
 from .serializers import ChangePasswordSerializer, RegisterSerializer, UserSerializer, GoogleLoginSerializer
 
@@ -76,8 +76,9 @@ class UserViewSet(GenericViewSet):
 
         user = request.user
         if not user.check_password(serializer.validated_data["old_password"]):
-            return Response(
-                {"error": {"code": "wrong_password", "detail": _("Old password is incorrect.")}},
+            return error_response(
+                detail=_("Old password is incorrect."),
+                code="wrong_password",
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -101,8 +102,9 @@ class UserViewSet(GenericViewSet):
         uid = decoded_token.get("uid")
 
         if not email:
-            return Response(
-                {"error": {"code": "missing_email", "detail": _("Email is missing from the Google token.")}},
+            return error_response(
+                detail=_("Email is missing from the Google token."),
+                code="missing_email",
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

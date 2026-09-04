@@ -5,16 +5,17 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework.permissions import IsAuthenticated
 
+from core.mixins import StandardResponseMixin
 from .models import ScriptTemplate, RouterScriptExecution
 from .serializers import ScriptTemplateSerializer, RouterScriptExecutionSerializer
 
-class ScriptTemplateViewSet(ReadOnlyModelViewSet):
+class ScriptTemplateViewSet(StandardResponseMixin, ReadOnlyModelViewSet):
     queryset = ScriptTemplate.objects.all()
     serializer_class = ScriptTemplateSerializer
     permission_classes = [IsAuthenticated]
 
 
-class RouterScriptExecutionViewSet(ModelViewSet):
+class RouterScriptExecutionViewSet(StandardResponseMixin, ModelViewSet):
     queryset = RouterScriptExecution.objects.all()
     serializer_class = RouterScriptExecutionSerializer
     permission_classes = [IsAuthenticated]

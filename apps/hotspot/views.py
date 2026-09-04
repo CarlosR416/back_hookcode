@@ -9,9 +9,11 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext as _
 
-from core.responses import created_response, success_response
+from core.mixins import StandardResponseMixin
+from core.responses import created_response, error_response, success_response
 from services.mikrotik.client import MikroTikClient
 from services.mikrotik.hotspot import HotspotService
 from services.hotspot_template import HotspotTemplateRendererFactory
@@ -41,7 +43,7 @@ def _get_hotspot_service(router) -> HotspotService:
     return HotspotService(client)
 
 
-class HotspotProfileViewSet(ModelViewSet):
+class HotspotProfileViewSet(StandardResponseMixin, ModelViewSet):
     """
     CRUD endpoints for hotspot profiles.
 
@@ -85,7 +87,7 @@ class HotspotProfileViewSet(ModelViewSet):
         return success_response(result)
 
 
-class HotspotUserViewSet(ModelViewSet):
+class HotspotUserViewSet(StandardResponseMixin, ModelViewSet):
     """
     CRUD endpoints for hotspot users.
 
@@ -152,11 +154,14 @@ class HotspotUserViewSet(ModelViewSet):
 
         router_id = request.query_params.get("router")
         if not router_id:
-            return Response(
-                {"error": {"code": "missing_param", "detail": _("'router' query param is required.")}},
+            return error_response(
+                detail=_("'router' query param is required."),
+                code="missing_param",
                 status=400,
             )
-        router = Router.objects.get(pk=router_id)
+        from apps.routers.models import Router
+
+        router = get_object_or_404(Router, pk=router_id)
         svc = _get_hotspot_service(router)
         return success_response(svc.list_active_sessions())
 
@@ -166,7 +171,7 @@ class HotspotUserViewSet(ModelViewSet):
 # ---------------------------------------------------------------------------
 
 
-class HotspotTemplateViewSet(ModelViewSet):
+class HotspotTemplateViewSet(StandardResponseMixin, ModelViewSet):
     """
     CRUD + rendering endpoints for portal templates.
 
@@ -246,7 +251,7 @@ class HotspotTemplateViewSet(ModelViewSet):
         return self._zip_response(template, mode="download", overrides=overrides)
 
 
-class HotspotTemplateFileViewSet(ModelViewSet):
+class HotspotTemplateFileViewSet(StandardResponseMixin, ModelViewSet):
     """
     CRUD + per-file rendering for individual template files.
 
