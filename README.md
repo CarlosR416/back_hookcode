@@ -101,3 +101,21 @@ Once the server is running, explore and test the endpoints via:
 * **Swagger UI:** [http://localhost:8000/api/docs/](http://localhost:8000/api/docs/)
 * **ReDoc:** [http://localhost:8000/api/redoc/](http://localhost:8000/api/redoc/)
 * **Django Admin:** [http://localhost:8000/admin/](http://localhost:8000/admin/)
+
+---
+
+## 📚 Software Design Document (SDD) & Specifications
+
+Comprehensive architecture guidelines, domain rules, i18n conventions, and testing performance standards are documented in the [docs/](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/docs/README.md) directory:
+
+* [SDD Master Index & Core Principles](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/docs/README.md)
+* [i18n & API Translation Guidelines](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/docs/general/i18n_guidelines.md)
+* [Testing Performance Guidelines](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/docs/general/testing_guidelines.md)
+* [API Architecture & Serializer Standards](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/docs/general/api_architecture.md)
+* Domain Specifications:
+  - [Users Domain](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/docs/domains/users.md)
+  - [Routers Domain](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/docs/domains/routers.md)
+  - [Tickets Domain](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/docs/domains/tickets.md)
+  - [Hotspot Domain](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/docs/domains/hotspot.md)
+  - [Scripts Domain](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/docs/domains/scripts.md)
+
