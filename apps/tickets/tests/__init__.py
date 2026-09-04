@@ -1,0 +1,3 @@
+"""
+Tickets application tests package.
+"""

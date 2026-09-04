@@ -1,5 +1,5 @@
 """
-Tests for the routers application, including membership validation and role permissions.
+Sub-domain tests: Internationalization (i18n) for Routers Domain.
 """
 
 from django.contrib.auth import get_user_model
@@ -7,32 +7,33 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Router, UserRouter
+from apps.routers.models import Router, UserRouter
 
 User = get_user_model()
 
 
-class RouterDomainTests(APITestCase):
-    def setUp(self):
-        self.admin = User.objects.create_superuser(
+class RouterI18nTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser(
             username="adminuser",
             email="admin@example.com",
             password="adminpassword123",
         )
-        self.regular_user = User.objects.create_user(
+        cls.regular_user = User.objects.create_user(
             username="regularuser",
             email="regular@example.com",
             password="userpassword123",
         )
-        self.router = Router.objects.create(
+        cls.router = Router.objects.create(
             name="Test Router",
             host="192.168.88.1",
             port=443,
             api_username="admin",
             api_password="password",
         )
-        self.memberships_url = reverse("routers:router-memberships-list")
-        self.router_detail_url = reverse("routers:routers-detail", kwargs={"pk": self.router.pk})
+        cls.memberships_url = reverse("routers:router-memberships-list")
+        cls.router_detail_url = reverse("routers:routers-detail", kwargs={"pk": cls.router.pk})
 
     def test_duplicate_membership_validation_in_spanish(self):
         """Serializer unique validation message should be in Spanish."""
@@ -86,7 +87,6 @@ class RouterDomainTests(APITestCase):
 
     def test_router_owner_permission_denied_in_spanish(self):
         """Permission denied error should be translated to Spanish."""
-        # regular_user is a viewer, not owner
         UserRouter.objects.create(
             user=self.regular_user,
             router=self.router,

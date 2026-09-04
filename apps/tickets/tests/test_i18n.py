@@ -1,5 +1,5 @@
 """
-Tests for the tickets application, including lifecycle actions and i18n messages.
+Sub-domain tests: Internationalization (i18n) for Tickets Domain.
 """
 
 from django.contrib.auth import get_user_model
@@ -8,25 +8,28 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.routers.models import Router
-from .models import Ticket
+from apps.tickets.models import Ticket
 
 User = get_user_model()
 
 
-class TicketDomainTests(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
+class TicketI18nTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
             username="ticketoperator",
             email="operator@example.com",
             password="operatorpass123",
         )
-        self.router = Router.objects.create(
+        cls.router = Router.objects.create(
             name="Tickets Router",
             host="192.168.88.1",
             port=443,
             api_username="admin",
             api_password="password",
         )
+
+    def setUp(self):
         self.client.force_authenticate(user=self.user)
 
     def test_ticket_cancel_non_pending_in_spanish(self):
@@ -62,17 +65,3 @@ class TicketDomainTests(APITestCase):
             "Only PENDING tickets can be cancelled. Current status: active",
             response.data.get("error", {}).get("detail"),
         )
-
-    def test_ticket_cancel_pending_success(self):
-        """Cancelling a PENDING ticket succeeds and updates status."""
-        ticket = Ticket.objects.create(
-            router=self.router,
-            profile_name="default",
-            duration_minutes=60,
-            status=Ticket.Status.PENDING,
-        )
-        cancel_url = reverse("tickets:tickets-cancel", kwargs={"pk": ticket.pk})
-        response = self.client.post(cancel_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        ticket.refresh_from_db()
-        self.assertEqual(ticket.status, Ticket.Status.CANCELLED)

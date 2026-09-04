@@ -1,0 +1,3 @@
+"""
+Routers application tests package.
+"""
