@@ -16,24 +16,31 @@ class UserRegistrationTests(APITestCase):
         cls.register_url = reverse("auth:users-register")
 
     def test_registration_success(self):
-        """Registering with valid payload creates a user and returns 201."""
+        """Registering with simplified valid payload creates a user and returns 201."""
         payload = {
             "email": "newuser@example.com",
-            "username": "newuser",
-            "first_name": "New",
-            "last_name": "User",
+            "first_name": "John",
+            "last_name": "Doe",
             "password": "Password123!",
             "password_confirm": "Password123!",
         }
         response = self.client.post(self.register_url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(User.objects.filter(email="newuser@example.com").exists())
+        user = User.objects.get(email="newuser@example.com")
+        self.assertEqual(user.first_name, "John")
+        self.assertEqual(user.last_name, "Doe")
+        self.assertEqual(user.username, "newuser@example.com")
+        self.assertEqual(response.data["data"]["email"], "newuser@example.com")
+        self.assertEqual(response.data["data"]["first_name"], "John")
+        self.assertEqual(response.data["data"]["last_name"], "Doe")
 
     def test_registration_password_mismatch(self):
         """Fails when password and password_confirm do not match."""
         payload = {
             "email": "newuser@example.com",
-            "username": "newuser",
+            "first_name": "John",
+            "last_name": "Doe",
             "password": "Password123!",
             "password_confirm": "DifferentPassword123!",
         }
@@ -43,8 +50,29 @@ class UserRegistrationTests(APITestCase):
         self.assertIn("password_confirm", response.data["error"])
 
     def test_registration_missing_required_fields(self):
-        """Fails when mandatory fields are omitted."""
-        response = self.client.post(self.register_url, data={"username": "onlyuser"}, format="json")
+        """Fails when mandatory fields (first_name, last_name, email, password) are omitted."""
+        response = self.client.post(self.register_url, data={}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("email", response.data["error"])
+        self.assertIn("first_name", response.data["error"])
+        self.assertIn("last_name", response.data["error"])
         self.assertIn("password", response.data["error"])
+
+    def test_registration_duplicate_email(self):
+        """Fails when an email is already registered."""
+        User.objects.create_user(
+            username="existing@example.com",
+            email="existing@example.com",
+            password="Password123!",
+        )
+        payload = {
+            "email": "existing@example.com",
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "password": "Password123!",
+            "password_confirm": "Password123!",
+        }
+        response = self.client.post(self.register_url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+        self.assertIn("email", response.data["error"])
