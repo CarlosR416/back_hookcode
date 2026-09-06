@@ -108,11 +108,12 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# Fast password hasher for test runs only (does not affect dev or prod)
+# Fast password hasher and in-memory email backend for test runs only
 if "test" in sys.argv:
     PASSWORD_HASHERS = [
         "django.contrib.auth.hashers.MD5PasswordHasher",
     ]
+    EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 
 # ── Internationalisation ────────────────────────────────────────────────────────
@@ -188,3 +189,19 @@ MIKROTIK_SSL_VERIFY = config("MIKROTIK_SSL_VERIFY", default=False, cast=bool)
 
 # ── Firebase ────────────────────────────────────────────────────────────────────
 FIREBASE_CREDENTIALS_PATH = config("FIREBASE_CREDENTIALS_PATH", default="")
+
+
+# ── Email & Brevo SMTP Relay ──────────────────────────────────────────────────
+EMAIL_BACKEND = config(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = config("EMAIL_HOST", default="smtp-relay.brevo.com")
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=False, cast=bool)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="WiFi Tickets <noreply@wifitickets.com>")
+EMAIL_OTP_EXPIRATION_MINUTES = config("EMAIL_OTP_EXPIRATION_MINUTES", default=15, cast=int)
+EMAIL_OTP_RESEND_COOLDOWN_SECONDS = config("EMAIL_OTP_RESEND_COOLDOWN_SECONDS", default=60, cast=int)

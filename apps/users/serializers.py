@@ -44,8 +44,42 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data: dict) -> User:
+        from .emails import generate_and_send_otp
+
         validated_data["username"] = validated_data["email"][:150]
-        return User.objects.create_user(**validated_data)
+        validated_data["is_active"] = False
+        user = User.objects.create_user(**validated_data)
+        generate_and_send_otp(user)
+        return user
+
+
+class VerifyOTPSerializer(serializers.Serializer):
+    """Serializer for 6-digit OTP email verification."""
+
+    email = serializers.EmailField(
+        required=True,
+        help_text=_("The email address of the account to verify."),
+    )
+    otp = serializers.CharField(
+        required=True,
+        min_length=6,
+        max_length=6,
+        help_text=_("The 6-digit numeric OTP code received via email."),
+    )
+
+    def validate_otp(self, value: str) -> str:
+        if not value.isdigit():
+            raise serializers.ValidationError(_("The OTP code must contain only digits."))
+        return value
+
+
+class ResendOTPSerializer(serializers.Serializer):
+    """Serializer for requesting a fresh OTP verification code."""
+
+    email = serializers.EmailField(
+        required=True,
+        help_text=_("The email address of the account to resend the code to."),
+    )
 
 
 class ChangePasswordSerializer(serializers.Serializer):
