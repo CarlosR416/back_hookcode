@@ -205,3 +205,6 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="WiFi Tickets <noreply@wifitickets.com>")
 EMAIL_OTP_EXPIRATION_MINUTES = config("EMAIL_OTP_EXPIRATION_MINUTES", default=5, cast=int)
 EMAIL_OTP_RESEND_COOLDOWN_SECONDS = config("EMAIL_OTP_RESEND_COOLDOWN_SECONDS", default=60, cast=int)
+
+# ── RouterOS Script Provisioning ──────────────────────────────────────────────
+SCRIPT_TOKEN_EXPIRATION_MINUTES = config("SCRIPT_TOKEN_EXPIRATION_MINUTES", default=10, cast=int)

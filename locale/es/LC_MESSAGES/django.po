@@ -76,3 +76,12 @@ msgstr "Inglés"
 #: config/settings/base.py:115
 msgid "Spanish"
 msgstr "Español"
+
+#: apps/scripts/views.py:57
+msgid "You must be the owner of this router to generate download tokens."
+msgstr "Debes ser el propietario de este router para generar tokens de descarga."
+
+#: apps/scripts/views.py:122
+msgid "The provisioning script link is invalid, has expired, or has already been used."
+msgstr "El enlace de script de aprovisionamiento es inválido, ha expirado o ya ha sido utilizado."
+
