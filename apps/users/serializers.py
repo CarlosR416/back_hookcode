@@ -21,12 +21,22 @@ class UserSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     """Write serializer for new user registration."""
 
+    first_name = serializers.CharField(
+        required=True,
+        max_length=150,
+        help_text=_("First name of the user."),
+    )
+    last_name = serializers.CharField(
+        required=True,
+        max_length=150,
+        help_text=_("Last name of the user."),
+    )
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ["email", "username", "first_name", "last_name", "password", "password_confirm"]
+        fields = ["email", "first_name", "last_name", "password", "password_confirm"]
 
     def validate(self, attrs: dict) -> dict:
         if attrs["password"] != attrs.pop("password_confirm"):
@@ -34,6 +44,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data: dict) -> User:
+        validated_data["username"] = validated_data["email"][:150]
         return User.objects.create_user(**validated_data)
 
 

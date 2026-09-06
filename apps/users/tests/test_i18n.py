@@ -31,7 +31,8 @@ class UserI18nTests(APITestCase):
         """When Accept-Language is 'es', validation messages should be in Spanish."""
         payload = {
             "email": "newuser@example.com",
-            "username": "newuser",
+            "first_name": "New",
+            "last_name": "User",
             "password": "Password123!",
             "password_confirm": "MismatchPassword123!",
         }
@@ -51,7 +52,8 @@ class UserI18nTests(APITestCase):
         """When Accept-Language is 'en', validation messages should be in English."""
         payload = {
             "email": "newuser@example.com",
-            "username": "newuser",
+            "first_name": "New",
+            "last_name": "User",
             "password": "Password123!",
             "password_confirm": "MismatchPassword123!",
         }

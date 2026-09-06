@@ -18,12 +18,16 @@ Extends Django's `AbstractUser` with the following customizations:
 ## 2. Invariants & Business Rules
 
 1. **Email Uniqueness:** Two accounts cannot share the same `email` address.
-2. **Password Confirmation Enforcement:**
+2. **Simplified User Registration:**
+   - Standard user registration requires only `email`, `first_name`, `last_name`, `password`, and `password_confirm`.
+   - Both `first_name` and `last_name` are mandatory fields.
+   - The backend automatically assigns the `email` value to the internal `username` field, removing the need for users to enter a separate username.
+3. **Password Confirmation Enforcement:**
    - Both registration (`RegisterSerializer`) and password changes (`ChangePasswordSerializer`) strictly require matching `password` and `password_confirm` fields.
-3. **Prior Password Verification on Change:**
+4. **Prior Password Verification on Change:**
    - `/api/auth/me/change-password/` validates that `old_password` matches the user's current password via `user.check_password()`.
    - On mismatch, it rejects the request with code `wrong_password` (HTTP 400).
-4. **Automated User Provisioning via Google Sign-In:**
+5. **Automated User Provisioning via Google Sign-In:**
    - In `/api/auth/google/`, when a valid Firebase ID token is received, if the email does not exist in the database, a new user is created (`is_new_user = true`) with `user.set_unusable_password()`.
    - If the token lacks an email payload, the request is immediately rejected with code `missing_email` (HTTP 400).
    - In all valid cases, standard JWT keypairs (`access` and `refresh`) are issued.
