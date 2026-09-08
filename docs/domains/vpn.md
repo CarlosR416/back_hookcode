@@ -11,7 +11,7 @@
 ### Model `VpnNode` ([apps/vpn/models.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/vpn/models.py))
 Represents a VPN server gateway or tunnel endpoint:
 * **Identification:** `name` (unique identifier, e.g., `"vpn-gateway-01"`), `description` (optional).
-* **Network Connectivity:** `host` (public hostname or IP address), `port` (VPN service port, defaults to `51820`).
+* **Network Connectivity:** `host` (public hostname or IP address), `port` (VPN service port, defaults to `51820`), `internal_ip` (internal tunnel IP address, e.g., `10.8.0.1/24`).
 * **Protocol / VPN Type:** `vpn_type` (`wireguard`, `openvpn`, `ipsec`).
 * **Credentials:** `public_certificate` (Text field containing PEM certificate or WireGuard public key).
 * **Operational Status:** `is_active` (boolean, defaults to `True`).

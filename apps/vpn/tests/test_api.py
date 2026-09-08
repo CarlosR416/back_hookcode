@@ -82,13 +82,15 @@ class VpnNodeApiTests(APITestCase):
             "name": "node-us-east",
             "host": "us.vpn.wifitickets.com",
             "port": 51820,
+            "internal_ip": "10.10.0.1/24",
             "vpn_type": VpnNode.VpnType.WIREGUARD,
             "public_certificate": "US_WIREGUARD_PUB_KEY",
             "description": "Primary US gateway",
         }
         response = self.client.post(self.list_url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(VpnNode.objects.filter(name="node-us-east").exists())
+        created = VpnNode.objects.get(name="node-us-east")
+        self.assertEqual(created.internal_ip, "10.10.0.1/24")
 
     def test_regular_user_cannot_create_vpn_node(self):
         """Non-staff users cannot register VPN nodes."""

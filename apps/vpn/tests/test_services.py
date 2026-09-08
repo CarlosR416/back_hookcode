@@ -20,6 +20,7 @@ class VpnNodeServiceTests(TestCase):
             name="vpn-gateway-01",
             host="vpn.wifitickets.com",
             port=51820,
+            internal_ip="10.8.0.1/24",
             vpn_type=VpnNode.VpnType.WIREGUARD,
             public_certificate=self.cert_sample,
             is_active=True,
@@ -86,6 +87,7 @@ class VpnNodeServiceTests(TestCase):
         self.assertEqual(details["name"], "vpn-gateway-01")
         self.assertEqual(details["host"], "vpn.wifitickets.com")
         self.assertEqual(details["port"], 51820)
+        self.assertEqual(details["internal_ip"], "10.8.0.1/24")
         self.assertEqual(details["vpn_type"], VpnNode.VpnType.WIREGUARD)
         self.assertEqual(details["public_certificate"], self.cert_sample.strip())
         self.assertTrue(details["is_active"])

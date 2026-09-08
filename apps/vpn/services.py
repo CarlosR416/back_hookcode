@@ -70,6 +70,7 @@ class VpnNodeService:
             "name": node.name,
             "host": node.host,
             "port": node.port,
+            "internal_ip": node.internal_ip,
             "vpn_type": node.vpn_type,
             "public_certificate": node.public_certificate.strip(),
             "is_active": node.is_active,

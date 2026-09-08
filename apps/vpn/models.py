@@ -28,6 +28,13 @@ class VpnNode(models.Model):
         verbose_name="VPN port",
         help_text="Base port used by the VPN service on this node.",
     )
+    internal_ip = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        verbose_name="Internal IP",
+        help_text="Internal tunnel IP address of the VPN node (e.g. 10.8.0.1 or 10.8.0.1/24).",
+    )
     vpn_type = models.CharField(
         max_length=20,
         choices=VpnType.choices,
