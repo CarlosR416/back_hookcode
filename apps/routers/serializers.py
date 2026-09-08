@@ -14,6 +14,15 @@ User = get_user_model()
 class RouterSerializer(serializers.ModelSerializer):
     """Read serializer — never exposes the api_password."""
 
+    api_port = serializers.IntegerField(
+        read_only=True,
+        help_text=_("Port used for MikroTik REST API connections (base port + 5000)."),
+    )
+    winbox_port = serializers.IntegerField(
+        read_only=True,
+        help_text=_("Port used for MikroTik Winbox management (identical to base port)."),
+    )
+
     class Meta:
         model = Router
         fields = [
@@ -21,6 +30,8 @@ class RouterSerializer(serializers.ModelSerializer):
             "name",
             "host",
             "port",
+            "api_port",
+            "winbox_port",
             "api_username",
             "ssl_verify",
             "routeros_version",
@@ -29,7 +40,7 @@ class RouterSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "api_port", "winbox_port", "created_at", "updated_at"]
 
 
 class RouterWriteSerializer(serializers.ModelSerializer):

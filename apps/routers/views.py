@@ -119,7 +119,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
             host=router.host,
             username=router.api_username,
             password=router.api_password,
-            port=router.port,
+            port=router.api_port or router.port,
             ssl_verify=router.ssl_verify,
         )
         return RouterService(client)

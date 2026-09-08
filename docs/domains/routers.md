@@ -10,7 +10,10 @@
 
 ### Model `Router` ([apps/routers/models.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/models.py))
 Represents a physical or virtual MikroTik RouterOS device:
-* **Connectivity:** `host` (defaults to `0.0.0.0`), `port` (unique HTTPS port, sequentially assigned in range `10001`–`15000`), `ssl_verify`.
+* **Connectivity:** `host` (defaults to `0.0.0.0`), `port` (unique base port, sequentially assigned in range `10001`–`15000`), `ssl_verify`.
+* **Computed Ports:**
+  - `winbox_port`: MikroTik Winbox remote management port (identical to base `port`, e.g., `10001`).
+  - `api_port`: MikroTik REST API HTTPS port (base `port + 5000`, e.g., `15001`).
 * **API Credentials:** `api_username` (unique, sequentially assigned starting at `U10001` matching port), `api_password` (unique 24-character cryptographic alphanumeric string, shielded as write-only).
 * **RouterOS Version:** Nullable (`null=True, default=None`), or set to `v6` / `v7`.
 

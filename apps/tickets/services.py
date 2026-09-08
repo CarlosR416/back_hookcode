@@ -82,7 +82,7 @@ def activate_ticket(ticket: Ticket, username: str | None = None) -> Ticket:
         host=ticket.router.host,
         username=ticket.router.api_username,
         password=ticket.router.api_password,
-        port=ticket.router.port,
+        port=ticket.router.api_port or ticket.router.port,
         ssl_verify=ticket.router.ssl_verify,
     )
     svc = HotspotService(client)

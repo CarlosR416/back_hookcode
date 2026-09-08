@@ -89,6 +89,8 @@ class RouterPermissionsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("data", response.data)
         self.assertEqual(response.data["data"]["id"], self.router.pk)
+        self.assertEqual(response.data["data"]["winbox_port"], self.router.port)
+        self.assertEqual(response.data["data"]["api_port"], self.router.port + 5000)
 
     def test_create_router_auto_owner_and_envelope(self):
         """Creating a router returns data envelope with id/name/description and assigns user as OWNER."""

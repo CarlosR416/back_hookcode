@@ -95,3 +95,21 @@ class RouterProvisioningServicesTests(TestCase):
         self.assertTrue(len(defaults["api_password"]) >= 20)
         self.assertTrue(defaults["is_active"])
         self.assertIsNone(defaults["routeros_version"])
+
+    def test_router_winbox_and_api_ports(self):
+        """Router exposes winbox_port (base port) and api_port (base port + 5000)."""
+        router = Router.objects.create(
+            name="Port Test Router",
+            host="192.168.1.1",
+            port=10005,
+            api_username="U10005",
+            api_password="pwd_port_test_123",
+        )
+        self.assertEqual(router.winbox_port, 10005)
+        self.assertEqual(router.api_port, 15005)
+
+        from apps.routers.serializers import RouterSerializer
+
+        serializer_data = RouterSerializer(router).data
+        self.assertEqual(serializer_data["winbox_port"], 10005)
+        self.assertEqual(serializer_data["api_port"], 15005)

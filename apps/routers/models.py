@@ -57,6 +57,16 @@ class Router(models.Model):
         verbose_name_plural = "Routers"
         ordering = ["name"]
 
+    @property
+    def winbox_port(self) -> int | None:
+        """MikroTik Winbox management port (identical to base port)."""
+        return self.port if self.port is not None else None
+
+    @property
+    def api_port(self) -> int | None:
+        """MikroTik REST API port (base port + 5000)."""
+        return (self.port + 5000) if self.port is not None else None
+
     def save(self, *args, **kwargs):
         if not self.port:
             from .services import get_next_router_identifier
