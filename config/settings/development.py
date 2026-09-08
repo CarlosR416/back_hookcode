@@ -9,6 +9,9 @@ DEBUG = True
 # Allow all hosts locally
 ALLOWED_HOSTS = ["*"]
 
+# CORS — allow all origins in development
+CORS_ALLOW_ALL_ORIGINS = True
+
 # Django Debug Toolbar
 INSTALLED_APPS += ["debug_toolbar"]  # noqa: F405
 MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa: F405
