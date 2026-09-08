@@ -32,6 +32,12 @@ class RouterPermissionsTests(APITestCase):
             email="unrelated@example.com",
             password="password123",
         )
+        cls.staff_non_owner = User.objects.create_user(
+            username="staffnonowner",
+            email="staff@example.com",
+            password="password123",
+            is_staff=True,
+        )
         cls.router = Router.objects.create(
             name="Protected Router",
             host="192.168.1.1",
@@ -129,4 +135,47 @@ class RouterPermissionsTests(APITestCase):
             ).exists()
         )
         mock_sync_radius.assert_called_once_with(created_router)
+
+    def test_owner_can_soft_delete_router(self):
+        """Router owner can perform logical deletion (soft delete) on the router."""
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.delete(self.router_detail_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Record still exists in database, but is_active is False
+        self.router.refresh_from_db()
+        self.assertFalse(self.router.is_active)
+        self.assertTrue(Router.objects.filter(pk=self.router.pk).exists())
+
+    def test_viewer_cannot_delete_router(self):
+        """Viewer role has read-only access and cannot delete the router."""
+        self.client.force_authenticate(user=self.viewer)
+        response = self.client.delete(self.router_detail_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.router.refresh_from_db()
+        self.assertTrue(self.router.is_active)
+
+    def test_unrelated_user_cannot_delete_router(self):
+        """Users with no assigned role cannot delete the router (returns 404)."""
+        self.client.force_authenticate(user=self.unrelated)
+        response = self.client.delete(self.router_detail_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.router.refresh_from_db()
+        self.assertTrue(self.router.is_active)
+
+    def test_non_owner_staff_cannot_delete_router(self):
+        """Staff users who are not owners cannot delete a router."""
+        self.client.force_authenticate(user=self.staff_non_owner)
+        response = self.client.delete(self.router_detail_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.router.refresh_from_db()
+        self.assertTrue(self.router.is_active)
+
+    def test_cannot_delete_already_inactive_router(self):
+        """Attempting to delete an already inactive router returns 404."""
+        self.router.soft_delete()
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.delete(self.router_detail_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
 

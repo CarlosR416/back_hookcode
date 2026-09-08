@@ -43,7 +43,6 @@ from .serializers import (
     UserRouterWriteSerializer,
 )
 from .services import (
-    delete_router_radius_user,
     provision_router_defaults,
     sync_router_radius_user,
 )
@@ -90,16 +89,22 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
 
     def get_queryset(self):
         """
-        Staff users see all routers.
-        Regular users see only the routers they have any role on.
+        Staff users see all active routers (or all if include_inactive=true).
+        Regular users see only active routers they have any role on.
         """
         user = self.request.user
+        base_qs = Router.objects.all()
+        if not getattr(user, "is_staff", False) or not self.request.query_params.get(
+            "include_inactive"
+        ):
+            base_qs = base_qs.filter(is_active=True)
+
         if getattr(user, "is_staff", False):
-            return Router.objects.all()
+            return base_qs
         owned_router_ids = UserRouter.objects.filter(user=user).values_list(
             "router_id", flat=True
         )
-        return Router.objects.filter(pk__in=owned_router_ids)
+        return base_qs.filter(pk__in=owned_router_ids)
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -121,9 +126,8 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
         sync_router_radius_user(router)
 
     def perform_destroy(self, instance: Router) -> None:
-        """Delete router records and cleanup associated RADIUS user."""
-        delete_router_radius_user(instance)
-        super().perform_destroy(instance)
+        """Perform logical deletion on router (is_active=False) and revoke RADIUS credentials."""
+        instance.soft_delete()
 
     def _get_service(self, router: Router) -> RouterService:
         """Build a RouterService for the given router instance."""
@@ -249,12 +253,14 @@ class UserRouterViewSet(ActionPermissionsMixin, GenericViewSet):
     def get_queryset(self):
         """
         Staff sees all memberships.
-        Regular users see only their own memberships.
+        Regular users see only memberships for active routers.
         """
         user = self.request.user
         if getattr(user, "is_staff", False):
             return UserRouter.objects.select_related("user", "router").all()
-        return UserRouter.objects.select_related("user", "router").filter(user=user)
+        return UserRouter.objects.select_related("user", "router").filter(
+            user=user, router__is_active=True
+        )
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:

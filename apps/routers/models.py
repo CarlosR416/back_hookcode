@@ -73,6 +73,19 @@ class Router(models.Model):
             self.port = get_next_router_identifier()
         super().save(*args, **kwargs)
 
+    def soft_delete(self) -> None:
+        """
+        Perform logical deletion by deactivating the router and purging RADIUS credentials.
+        """
+        from .services import delete_router_radius_user
+
+        try:
+            delete_router_radius_user(self)
+        except Exception:
+            pass
+        self.is_active = False
+        self.save(update_fields=["is_active", "updated_at"])
+
     def delete(self, *args, **kwargs):
         from .services import delete_router_radius_user
 

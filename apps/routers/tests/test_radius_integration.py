@@ -116,7 +116,7 @@ class RouterRadiusIntegrationTests(APITestCase):
         self.assertTrue(len(rad_entry.value) >= 20)
 
     def test_api_delete_router_removes_radius_user(self):
-        """DELETE /api/routers/{id}/ removes both Router and associated RADIUS user credentials."""
+        """DELETE /api/routers/{id}/ performs logical deletion (is_active=False) and removes associated RADIUS user credentials."""
         create_url = reverse("routers:routers-list")
         response = self.client.post(
             create_url,
@@ -137,10 +137,12 @@ class RouterRadiusIntegrationTests(APITestCase):
         delete_response = self.client.delete(detail_url)
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
 
-        # Confirm Router is deleted
-        self.assertFalse(Router.objects.filter(pk=router_id).exists())
+        # Confirm Router is logically deleted (record preserved, is_active=False)
+        router.refresh_from_db()
+        self.assertFalse(router.is_active)
+        self.assertTrue(Router.objects.filter(pk=router_id).exists())
 
-        # Confirm RADIUS user is also deleted
+        # Confirm RADIUS user is purged
         self.assertFalse(RadCheck.objects.filter(username=api_username).exists())
 
     @patch("apps.routers.views.sync_router_radius_user")
