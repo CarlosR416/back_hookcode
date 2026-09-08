@@ -19,12 +19,12 @@ class Router(models.Model):
     """
 
     name = models.CharField(max_length=100, verbose_name="Router name")
-    host = models.GenericIPAddressField(verbose_name="IP address or hostname")
-    port = models.PositiveIntegerField(default=443, verbose_name="HTTPS port")
+    host = models.GenericIPAddressField(default="0.0.0.0", verbose_name="IP address or hostname")
+    port = models.PositiveIntegerField(unique=True, verbose_name="HTTPS port")
 
     # API credentials — use encrypted field or secrets manager in production
-    api_username = models.CharField(max_length=100, verbose_name="API username")
-    api_password = models.CharField(max_length=255, verbose_name="API password")
+    api_username = models.CharField(max_length=100, unique=True, verbose_name="API username")
+    api_password = models.CharField(max_length=255, unique=True, verbose_name="API password")
 
     ssl_verify = models.BooleanField(
         default=False,
@@ -46,7 +46,9 @@ class Router(models.Model):
     routeros_version = models.CharField(
         max_length=10,
         choices=ROUTEROS_VERSION_CHOICES,
-        default=ROUTEROS_V6,
+        null=True,
+        blank=True,
+        default=None,
         verbose_name="RouterOS version",
     )
 
@@ -54,6 +56,12 @@ class Router(models.Model):
         verbose_name = "Router"
         verbose_name_plural = "Routers"
         ordering = ["name"]
+
+    def save(self, *args, **kwargs):
+        if not self.port:
+            from .services import get_next_router_identifier
+            self.port = get_next_router_identifier()
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.name} ({self.host})"

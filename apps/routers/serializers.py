@@ -55,6 +55,28 @@ class RouterWriteSerializer(serializers.ModelSerializer):
         }
 
 
+class RouterCreateSerializer(serializers.ModelSerializer):
+    """
+    Client registration serializer.
+
+    Only accepts name and description from the client.
+    Host, port, credentials, and RouterOS version are provisioned
+    automatically by backend services.
+    """
+
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text=_("Optional router description."),
+    )
+
+    class Meta:
+        model = Router
+        fields = ["id", "name", "description"]
+        read_only_fields = ["id"]
+
+
 # ---------------------------------------------------------------------------
 # UserRouter serializers
 # ---------------------------------------------------------------------------

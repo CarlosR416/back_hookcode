@@ -35,11 +35,13 @@ from services.mikrotik.router import RouterService
 from .models import Router, UserRouter
 from .permissions import IsAdminOrReadOwner, IsRouterMember, IsRouterOwner
 from .serializers import (
+    RouterCreateSerializer,
     RouterSerializer,
     RouterWriteSerializer,
     UserRouterSerializer,
     UserRouterWriteSerializer,
 )
+from .services import provision_router_defaults
 
 
 class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet):
@@ -95,13 +97,16 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
         return Router.objects.filter(pk__in=owned_router_ids)
 
     def get_serializer_class(self):
-        if self.action in ["create", "update", "partial_update"]:
+        if self.action == "create":
+            return RouterCreateSerializer
+        if self.action in ["update", "partial_update"]:
             return RouterWriteSerializer
         return RouterSerializer
 
     def perform_create(self, serializer: BaseSerializer[Any]) -> None:
-        """Create the router and automatically assign creator as OWNER."""
-        router = serializer.save()
+        """Create the router with dynamic credentials/port and automatically assign creator as OWNER."""
+        defaults = provision_router_defaults()
+        router = serializer.save(**defaults)
         UserRouter.objects.create(
             user=self.request.user,
             router=router,

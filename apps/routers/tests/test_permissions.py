@@ -91,21 +91,31 @@ class RouterPermissionsTests(APITestCase):
         self.assertEqual(response.data["data"]["id"], self.router.pk)
 
     def test_create_router_auto_owner_and_envelope(self):
-        """Creating a router returns data envelope and assigns user as OWNER."""
+        """Creating a router returns data envelope with id/name/description and assigns user as OWNER."""
         self.client.force_authenticate(user=self.unrelated)
         payload = {
             "name": "New Router by Unrelated",
-            "host": "10.0.0.1",
-            "port": 443,
-            "api_username": "admin",
-            "api_password": "securepassword",
+            "description": "Branch office router",
         }
         create_url = reverse("routers:routers-list")
         response = self.client.post(create_url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("data", response.data)
-        self.assertEqual(response.data["data"]["name"], "New Router by Unrelated")
-        new_router_id = response.data["data"]["id"]
+        data = response.data["data"]
+        self.assertEqual(data["name"], "New Router by Unrelated")
+        self.assertEqual(data["description"], "Branch office router")
+        # Ensure only id, name, description are returned in response data
+        self.assertEqual(set(data.keys()), {"id", "name", "description"})
+
+        new_router_id = data["id"]
+        created_router = Router.objects.get(pk=new_router_id)
+        self.assertEqual(created_router.host, "0.0.0.0")
+        self.assertEqual(created_router.port, 10001)
+        self.assertEqual(created_router.api_username, "U10001")
+        self.assertTrue(len(created_router.api_password) >= 20)
+        self.assertTrue(created_router.is_active)
+        self.assertIsNone(created_router.routeros_version)
+
         self.assertTrue(
             UserRouter.objects.filter(
                 user=self.unrelated,

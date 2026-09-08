@@ -10,9 +10,9 @@
 
 ### Model `Router` ([apps/routers/models.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/models.py))
 Represents a physical or virtual MikroTik RouterOS device:
-* **Connectivity:** `host` (IP or hostname), `port` (HTTPS port, defaults to 443), `ssl_verify`.
-* **API Credentials:** `api_username`, `api_password` (shielded as write-only in serializers).
-* **RouterOS Version:** `v6` (SSH / legacy API) or `v7` (REST API over HTTPS).
+* **Connectivity:** `host` (defaults to `0.0.0.0`), `port` (unique HTTPS port, sequentially assigned in range `10001`–`15000`), `ssl_verify`.
+* **API Credentials:** `api_username` (unique, sequentially assigned starting at `U10001` matching port), `api_password` (unique 24-character cryptographic alphanumeric string, shielded as write-only).
+* **RouterOS Version:** Nullable (`null=True, default=None`), or set to `v6` / `v7`.
 
 ### Model `UserRouter` ([apps/routers/models.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/models.py))
 Associates a user with a specific router under an assigned permission role:
@@ -26,14 +26,23 @@ Associates a user with a specific router under an assigned permission role:
 ## 2. Invariants & Business Rules
 
 1. **Role Uniqueness Invariant:** A user may only hold a single role per router. Duplicates are intercepted at the serializer layer via DRF's `UniqueTogetherValidator` before database execution.
-2. **Multi-Tenant Queryset Isolation (`get_queryset`):**
+2. **Simplified Client Registration:**
+   - On `POST /api/routers/`, clients submit only `name` (required) and `description` (optional).
+   - Response envelope exposes only `id`, `name`, and `description`.
+3. **Sequential & Collision-Free Provisioning (`apps/routers/services.py`):**
+   - Identifier begins at `10001` and increments in lockstep up to `15000`.
+   - `port` is set to the integer identifier (e.g., `10001`).
+   - `api_username` is set to `U<identifier>` (e.g., `"U10001"`).
+   - `api_password` is generated as a collision-free 24-character random password.
+   - `host` defaults to `"0.0.0.0"`, `is_active` to `True`, and `routeros_version` to `None`.
+4. **Multi-Tenant Queryset Isolation (`get_queryset`):**
    - Non-staff users only see routers where an active `UserRouter` record exists for their account.
    - Querying an unassigned router ID returns `HTTP 404 Not Found` (DRF standard for filtered querysets), never 403.
-3. **Owner Assignment on Creation:**
+5. **Owner Assignment on Creation:**
    - When an authenticated user creates a `Router`, they are automatically assigned as `OWNER` via `UserRouter.objects.create(user=request.user, router=instance, role=OWNER)`.
-4. **Credential Protection:**
+6. **Credential Protection:**
    - `RouterSerializer` (read) completely omits `api_password`. Only `RouterWriteSerializer` accepts passwords (`write_only: True`).
-5. **Admin-Only Membership Management:**
+7. **Admin-Only Membership Management:**
    - The `/api/routers/memberships/` endpoint requires `IsAdminUser`.
    - Allows assigning an explicit `user` ID or defaulting to the requesting user via `CurrentUserDefault()`.
 
@@ -44,7 +53,7 @@ Associates a user with a specific router under an assigned permission role:
 | Method | Path | Permission | Description |
 |---|---|---|---|
 | `GET` | `/api/routers/` | `IsAuthenticated` | Lists routers accessible to the user (or all if staff). |
-| `POST` | `/api/routers/` | `IsAuthenticated` | Creates a router and assigns creator as `OWNER`. |
+| `POST` | `/api/routers/` | `IsAuthenticated` | Creates a router with dynamic U10001/port provisioning and assigns creator as `OWNER`. |
 | `GET` | `/api/routers/{id}/` | `IsAuthenticated` | Retrieves router details (requires active membership). |
 | `PUT / PATCH`| `/api/routers/{id}/` | `IsRouterOwner` | Updates router configuration (Owner only). |
 | `DELETE` | `/api/routers/{id}/` | `IsRouterOwner` | Deletes router and associations (Owner only). |
@@ -59,6 +68,7 @@ Associates a user with a specific router under an assigned permission role:
 
 | Test Sub-Domain | File | Key Scenarios Verified |
 |---|---|---|
+| **Provisioning Services** | [apps/routers/tests/test_services.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_services.py) | Sequential identifier allocation starting at `U10001`/`10001`, password uniqueness, and range exhaustion. |
 | **Memberships** | [apps/routers/tests/test_memberships.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_memberships.py) | Successful admin assignment, automatic `CurrentUserDefault()` fallback, duplicate rejection. |
-| **Permissions & RBAC** | [apps/routers/tests/test_permissions.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_permissions.py) | Owner can update (`HTTP 200`), Viewer rejected from updating (`HTTP 403`), unassigned returns `HTTP 404`. |
+| **Permissions & RBAC** | [apps/routers/tests/test_permissions.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_permissions.py) | Router creation envelope (only id, name, description), Owner update (`HTTP 200`), Viewer update denial (`HTTP 403`). |
 | **Internationalization** | [apps/routers/tests/test_i18n.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_i18n.py) | Spanish and English assertions for uniqueness validation and owner permission denial messages. |
