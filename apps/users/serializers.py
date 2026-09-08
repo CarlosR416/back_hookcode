@@ -3,6 +3,7 @@ Serializers for the users application.
 """
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
@@ -43,13 +44,19 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"password_confirm": _("Passwords do not match.")})
         return attrs
 
+    @transaction.atomic
     def create(self, validated_data: dict) -> User:
         from .emails import generate_and_send_otp
 
         validated_data["username"] = validated_data["email"][:150]
         validated_data["is_active"] = False
         user = User.objects.create_user(**validated_data)
-        generate_and_send_otp(user)
+        try:
+            generate_and_send_otp(user)
+        except Exception as exc:
+            raise serializers.ValidationError(
+                {"email": _("Failed to send verification email. Please try again later.")}
+            ) from exc
         return user
 
 

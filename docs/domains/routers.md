@@ -49,6 +49,7 @@ Associates a user with a specific router under an assigned permission role:
 | `PUT / PATCH`| `/api/routers/{id}/` | `IsRouterOwner` | Updates router configuration (Owner only). |
 | `DELETE` | `/api/routers/{id}/` | `IsRouterOwner` | Deletes router and associations (Owner only). |
 | `POST` | `/api/routers/{id}/ping/` | `IsAuthenticated` | Performs real-time connectivity health check with MikroTik. |
+| `POST` | `/api/routers/{id}/generate-bootstrap-token/` | `IsRouterOwner` | Generates a single-use (Burn-on-Read) download token and RouterOS fetch command for initial provisioning. |
 | `GET` | `/api/routers/memberships/` | `IsAdminUser` | Lists all user-router memberships. |
 | `POST` | `/api/routers/memberships/` | `IsAdminUser` | Creates a membership with uniqueness validation. |
 
