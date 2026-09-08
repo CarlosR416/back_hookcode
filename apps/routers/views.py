@@ -10,6 +10,7 @@ from datetime import timedelta
 from typing import Any
 
 from django.conf import settings
+from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -107,6 +108,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
             return RouterWriteSerializer
         return RouterSerializer
 
+    @transaction.atomic
     def perform_create(self, serializer: BaseSerializer[Any]) -> None:
         """Create the router with dynamic credentials/port, assign creator as OWNER, and register RADIUS user."""
         defaults = provision_router_defaults()

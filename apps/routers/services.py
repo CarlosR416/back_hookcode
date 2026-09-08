@@ -105,7 +105,7 @@ def sync_router_radius_user(
     from apps.radius.services import RadiusService
 
     if not router.api_username:
-        return None
+        raise ValueError("Router must have an api_username to provision a RADIUS user.")
 
     radius_password = password or generate_router_radius_password(
         exclude_password=router.api_password

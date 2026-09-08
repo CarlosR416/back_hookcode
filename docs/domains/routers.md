@@ -48,8 +48,9 @@ Associates a user with a specific router under an assigned permission role:
 7. **Admin-Only Membership Management:**
    - The `/api/routers/memberships/` endpoint requires `IsAdminUser`.
    - Allows assigning an explicit `user` ID or defaulting to the requesting user via `CurrentUserDefault()`.
-8. **FreeRADIUS Synchronization:**
-   - On registration (`POST /api/routers/`), a corresponding FreeRADIUS user is created with `api_username` and an independent, cryptographically secure random password (distinct from `api_password`) via `RadiusService.add_user()`.
+8. **FreeRADIUS Synchronization & Atomic Provisioning:**
+   - On registration (`POST /api/routers/`), router creation, owner membership assignment, and FreeRADIUS user provisioning are executed within an atomic transaction (`@transaction.atomic`). If FreeRADIUS user creation fails, the entire transaction is rolled back and no router or membership is created.
+   - A corresponding FreeRADIUS user is created with `api_username` and an independent, cryptographically secure random password (distinct from `api_password`) via `RadiusService.add_user()`.
    - On deletion (`DELETE /api/routers/{id}/` or `router.delete()`), the corresponding RADIUS user records (`radcheck`, `radreply`, `radusergroup`) are purged via `RadiusService.delete_user()`.
 
 ---

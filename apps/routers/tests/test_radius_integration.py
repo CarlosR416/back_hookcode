@@ -2,6 +2,8 @@
 Sub-domain tests: Router FreeRADIUS synchronization on registration and deletion.
 """
 
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.db import connections
 from django.urls import reverse
@@ -140,3 +142,27 @@ class RouterRadiusIntegrationTests(APITestCase):
 
         # Confirm RADIUS user is also deleted
         self.assertFalse(RadCheck.objects.filter(username=api_username).exists())
+
+    @patch("apps.routers.views.sync_router_radius_user")
+    def test_router_creation_rolls_back_if_radius_sync_fails(self, mock_sync):
+        """If FreeRADIUS user provisioning fails, the router and owner membership are rolled back."""
+        mock_sync.side_effect = RuntimeError("FreeRADIUS service is unreachable")
+
+        create_url = reverse("routers:routers-list")
+        payload = {
+            "name": "Failed Atomic Router",
+            "description": "Should not exist in database",
+        }
+
+        response = self.client.post(create_url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Verify Router was completely rolled back from the default database
+        self.assertFalse(
+            Router.objects.filter(name="Failed Atomic Router").exists()
+        )
+        # Verify no orphan UserRouter associations remain
+        self.assertFalse(
+            UserRouter.objects.filter(router__name="Failed Atomic Router").exists()
+        )
+
