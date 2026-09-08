@@ -12,6 +12,7 @@ from typing import Any
 from django.conf import settings
 from django.db import transaction
 from django.urls import reverse
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -28,7 +29,7 @@ from apps.scripts.serializers import (
     ScriptDownloadTokenResponseSerializer,
 )
 from core.mixins import ActionPermissionsMixin, StandardResponseMixin
-from core.responses import created_response, no_content_response, success_response
+from core.responses import created_response, error_response, no_content_response, success_response
 
 from services.mikrotik.client import MikroTikClient
 from services.mikrotik.router import RouterService
@@ -36,6 +37,7 @@ from services.mikrotik.router import RouterService
 from .models import Router, UserRouter
 from .permissions import IsAdminOrReadOwner, IsRouterMember, IsRouterOwner
 from .serializers import (
+    GenerateVpnTokenSerializer,
     RouterCreateSerializer,
     RouterSerializer,
     RouterWriteSerializer,
@@ -43,6 +45,7 @@ from .serializers import (
     UserRouterWriteSerializer,
 )
 from .services import (
+    generate_router_vpn_provisioning_token,
     provision_router_defaults,
     sync_router_radius_user,
 )
@@ -62,6 +65,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
     resource:                 GET  /api/routers/{id}/resource/
     interfaces:               GET  /api/routers/{id}/interfaces/
     generate_bootstrap_token: POST /api/routers/{id}/generate-bootstrap-token/
+    generate_vpn_token:       POST /api/routers/{id}/generate-vpn-token/
 
     Access policy
     -------------
@@ -70,7 +74,8 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
       resource / interfaces   → IsRouterMember (owner OR viewer)
     - update / partial_update
       / destroy /
-      generate_bootstrap_token → IsRouterOwner (owner only)
+      generate_bootstrap_token /
+      generate_vpn_token      → IsRouterOwner (owner only)
     """
 
     permission_classes = [IsAuthenticated]
@@ -85,6 +90,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
         "partial_update": [IsRouterOwner],
         "destroy": [IsRouterOwner],
         "generate_bootstrap_token": [IsRouterOwner],
+        "generate_vpn_token": [IsRouterOwner],
     }
 
     def get_queryset(self):
@@ -221,6 +227,45 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
                 "expires_at": token_record.expires_at,
             }
         )
+
+    @extend_schema(
+        request=GenerateVpnTokenSerializer,
+        responses={201: ScriptDownloadTokenResponseSerializer},
+        tags=["routers"],
+        summary="Generate an automated IKEv2 VPN client provisioning token",
+        description=(
+            "Generates a single-use token and RouterOS command to provision IKEv2 VPN on "
+            "the router, dynamically binding to the first active VPN node and router credentials."
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="generate-vpn-token")
+    def generate_vpn_token(self, request: Request, pk: int | None = None) -> Response:
+        """
+        Generate a single-use download token to configure IKEv2 VPN client on the router.
+        """
+        router = self.get_object()
+        serializer = GenerateVpnTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+        expiration_minutes = data.get("expiration_minutes")
+        filename = data.get("filename", "vpn_setup.rsc")
+
+        try:
+            result = generate_router_vpn_provisioning_token(
+                router=router,
+                request=request,
+                expiration_minutes=expiration_minutes,
+                filename=filename,
+            )
+            return created_response(result)
+        except ValidationError as exc:
+            detail_msg = exc.message if hasattr(exc, "message") else str(exc)
+            return error_response(
+                detail=detail_msg,
+                code="vpn_provisioning_error",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 class UserRouterViewSet(ActionPermissionsMixin, GenericViewSet):

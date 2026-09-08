@@ -70,10 +70,11 @@ class VpnNodeApiTests(APITestCase):
         self.assertIn("text/plain", response["Content-Type"])
         self.assertEqual(response.content.decode("utf-8"), self.cert_sample.strip())
 
-    def test_unauthenticated_cannot_access_certificate(self):
-        """Unauthenticated requests are rejected with 401."""
-        response = self.client.get(self.cert_url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    def test_unauthenticated_can_access_certificate(self):
+        """Unauthenticated requests (e.g. RouterOS /tool fetch) can download the public certificate."""
+        response = self.client.get(f"{self.cert_url}?raw=true")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.content.decode("utf-8"), self.cert_sample.strip())
 
     def test_admin_can_create_vpn_node(self):
         """Staff user can register a new VPN node."""

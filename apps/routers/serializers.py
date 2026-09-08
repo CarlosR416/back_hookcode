@@ -88,6 +88,24 @@ class RouterCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
 
+class GenerateVpnTokenSerializer(serializers.Serializer):
+    """Input serializer for generating an automated IKEv2 VPN client provisioning token."""
+
+    expiration_minutes = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=60,
+        default=10,
+        help_text=_("Token expiration in minutes (default 10)."),
+    )
+    filename = serializers.CharField(
+        required=False,
+        default="vpn_setup.rsc",
+        max_length=100,
+        help_text=_("Destination filename on the MikroTik router."),
+    )
+
+
 # ---------------------------------------------------------------------------
 # UserRouter serializers
 # ---------------------------------------------------------------------------

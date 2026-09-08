@@ -8,7 +8,7 @@ from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
@@ -47,7 +47,7 @@ class VpnNodeViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet
         "destroy": [IsAdminUser],
         "list": [IsAuthenticated],
         "retrieve": [IsAuthenticated],
-        "certificate": [IsAuthenticated],
+        "certificate": [AllowAny],
     }
 
     def get_queryset(self):

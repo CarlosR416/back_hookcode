@@ -140,3 +140,105 @@ def delete_router_radius_user(router: Router) -> bool:
 
     return RadiusService.delete_user(username=router.api_username)
 
+
+def generate_router_vpn_provisioning_token(
+    router: Router,
+    request=None,
+    expiration_minutes: int | None = None,
+    filename: str = "vpn_setup.rsc",
+) -> dict:
+    """
+    Generate a single-use provisioning token for configuring an automated IKEv2 VPN client on MikroTik.
+
+    Dynamically binds to the first active VPN node, the seeded 'MikroTik IKEv2 VPN Client' template,
+    and the FreeRADIUS credentials for the router's api_username.
+    """
+    from datetime import timedelta
+    from django.conf import settings
+    from django.urls import reverse
+    from django.utils import timezone
+    from apps.radius.models import RadCheck
+    from apps.scripts.models import ScriptDownloadToken, ScriptTemplate
+    from apps.vpn.models import VpnNode
+
+    vpn_node = VpnNode.objects.filter(is_active=True).first()
+    if not vpn_node:
+        raise ValidationError(_("No active VPN node is currently available."))
+
+    template = ScriptTemplate.objects.filter(name="MikroTik IKEv2 VPN Client").first()
+    if not template:
+        raise ValidationError(_("VPN script template 'MikroTik IKEv2 VPN Client' not found."))
+
+    if not router.api_username:
+        raise ValidationError(_("Router does not have an api_username configured."))
+
+    radcheck = RadCheck.objects.filter(
+        username=router.api_username,
+        attribute="Cleartext-Password",
+    ).first()
+
+    if not radcheck:
+        sync_result = sync_router_radius_user(router)
+        radius_password = sync_result["password"]
+    else:
+        radius_password = radcheck.value
+
+    radius_username = router.api_username
+
+    vpn_server_internal_ip = vpn_node.internal_ip.split("/")[0] if vpn_node.internal_ip else ""
+    if not vpn_server_internal_ip:
+        raise ValidationError(_("Active VPN node does not have an internal IP configured."))
+
+    cert_url = reverse("vpn:nodes-certificate", kwargs={"pk": vpn_node.pk})
+    if request:
+        cert_download_url = f"{request.build_absolute_uri(cert_url)}?raw=true"
+    else:
+        cert_download_url = f"{cert_url}?raw=true"
+
+    exp_minutes = (
+        expiration_minutes
+        if expiration_minutes is not None
+        else getattr(settings, "SCRIPT_TOKEN_EXPIRATION_MINUTES", 10)
+    )
+    token = secrets.token_urlsafe(32)
+    expires_at = timezone.now() + timedelta(minutes=exp_minutes)
+
+    token_record = ScriptDownloadToken.objects.create(
+        router=router,
+        template=template,
+        variables_used={
+            "cert_download_url": cert_download_url,
+            "vpn_server_address": vpn_node.host,
+            "radius_username": radius_username,
+            "radius_password": radius_password,
+            "vpn_server_internal_ip": vpn_server_internal_ip,
+            "vpn_node_id": vpn_node.pk,
+            "vpn_node_name": vpn_node.name,
+            "router_name": router.name,
+        },
+        token=token,
+        expires_at=expires_at,
+        include_cleanup=True,
+        filename=filename,
+    )
+
+    if request:
+        download_url = request.build_absolute_uri(
+            reverse("scripts:script-download", kwargs={"token": token})
+        )
+    else:
+        download_url = reverse("scripts:script-download", kwargs={"token": token})
+
+    routeros_cmd = (
+        f'/tool fetch url="{download_url}" mode=https dst-path="{filename}"; '
+        f':delay 1s; /import {filename}'
+    )
+
+    return {
+        "token": token_record.token,
+        "download_url": download_url,
+        "routeros_command": routeros_cmd,
+        "expires_at": token_record.expires_at,
+    }
+
+

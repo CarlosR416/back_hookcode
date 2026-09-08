@@ -61,6 +61,12 @@ Associates a user with a specific router under an assigned permission role:
    - Non-owner staff users attempting deletion receive `HTTP 403 Forbidden`.
    - Users without an associated membership receive `HTTP 404 Not Found`.
    - Database records (`Router`, `UserRouter`) are preserved for auditing and historical associations.
+10. **Automated IKEv2 VPN Provisioning (`generate-vpn-token`):**
+   - Endpoint `POST /api/routers/{id}/generate-vpn-token/` generates a single-use (Burn-on-Read) download token and RouterOS command for configuring an automated IKEv2 VPN client.
+   - Automatically selects the first active VPN node (`VpnNode.objects.filter(is_active=True).first()`) and the seeded `"MikroTik IKEv2 VPN Client"` script template without requiring client-supplied parameters.
+   - Dynamically extracts FreeRADIUS user credentials associated with the router (`router.api_username` and `RadCheck.value`).
+   - Builds public certificate download URL (`/api/vpn/nodes/{id}/certificate/?raw=true`), IPsec peer configuration with `vpn_node.host`, and a top-priority firewall input rule (`place-before=0`) matching `vpn_node.internal_ip`.
+   - Strictly restricted to router owners (`IsRouterOwner`); viewers receive `HTTP 403 Forbidden`.
 
 ---
 
@@ -75,6 +81,7 @@ Associates a user with a specific router under an assigned permission role:
 | `DELETE` | `/api/routers/{id}/` | `IsRouterOwner` | Performs logical deletion (soft delete, `is_active=False`) and cleans up RADIUS user credentials (Owner only). |
 | `POST` | `/api/routers/{id}/ping/` | `IsAuthenticated` | Performs real-time connectivity health check with MikroTik. |
 | `POST` | `/api/routers/{id}/generate-bootstrap-token/` | `IsRouterOwner` | Generates a single-use (Burn-on-Read) download token and RouterOS fetch command for initial provisioning. |
+| `POST` | `/api/routers/{id}/generate-vpn-token/` | `IsRouterOwner` | Generates a single-use download token and RouterOS command for automated IKEv2 VPN setup. |
 | `GET` | `/api/routers/memberships/` | `IsAdminUser` | Lists all user-router memberships. |
 | `POST` | `/api/routers/memberships/` | `IsAdminUser` | Creates a membership with uniqueness validation. |
 
@@ -89,3 +96,4 @@ Associates a user with a specific router under an assigned permission role:
 | **Permissions & RBAC** | [apps/routers/tests/test_permissions.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_permissions.py) | Router creation envelope (only id, name, description), Owner update (`HTTP 200`), Viewer update denial (`HTTP 403`), Owner soft-delete (`HTTP 204`), Viewer delete denial (`HTTP 403`), Non-owner staff delete denial (`HTTP 403`). |
 | **Internationalization** | [apps/routers/tests/test_i18n.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_i18n.py) | Spanish and English assertions for uniqueness validation and owner permission denial messages. |
 | **RADIUS Integration** | [apps/routers/tests/test_radius_integration.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_radius_integration.py) | FreeRADIUS user credential creation on router registration, and complete cleanup on router logical deletion. |
+| **VPN Provisioning** | [apps/routers/tests/test_vpn_provisioning.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_vpn_provisioning.py) | Owner token generation, dynamic variable interpolation, unauthenticated download & token burning (HTTP 410 on second read), viewer permission denial (HTTP 403), inactive VPN node error (HTTP 400). |

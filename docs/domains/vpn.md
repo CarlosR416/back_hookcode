@@ -24,7 +24,8 @@ Represents a VPN server gateway or tunnel endpoint:
    - Only active nodes (`is_active = True`) can serve public certificates. Inactive nodes raise errors when queried via the service layer or return `HTTP 404 Not Found` in API lookups for regular users.
 2. **Access Control:**
    - Administrative actions (`create`, `update`, `destroy`) require staff status (`IsAdminUser`).
-   - Read actions (`list`, `retrieve`, `certificate`) are available to all authenticated users (`IsAuthenticated`).
+   - Read actions (`list`, `retrieve`) require authenticated users (`IsAuthenticated`).
+   - The `certificate` endpoint is publicly accessible (`AllowAny`) to enable automated RouterOS `/tool fetch` downloads without Bearer authentication headers.
 3. **Flexible Certificate Formats:**
    - The certificate endpoint returns a standard JSON data envelope by default.
    - For automated client provisioning (such as MikroTik RouterOS scripts or `curl`), appending `?raw=true` or `?download=true` streams the raw certificate/key directly as `text/plain`.
@@ -40,7 +41,7 @@ Represents a VPN server gateway or tunnel endpoint:
 | `GET` | `/api/vpn/nodes/{id}/` | `IsAuthenticated` | Retrieves VPN node details. |
 | `PUT / PATCH` | `/api/vpn/nodes/{id}/` | `IsAdminUser` | Updates VPN node configuration. |
 | `DELETE` | `/api/vpn/nodes/{id}/` | `IsAdminUser` | Deletes a VPN node. |
-| `GET` | `/api/vpn/nodes/{id}/certificate/` | `IsAuthenticated` | Serves the public certificate of the node (JSON or raw stream via `?raw=true`). |
+| `GET` | `/api/vpn/nodes/{id}/certificate/` | `AllowAny` | Serves the public certificate of the node (JSON or raw stream via `?raw=true`). |
 
 ---
 
