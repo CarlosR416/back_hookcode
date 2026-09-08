@@ -1,16 +1,19 @@
 import secrets
 from datetime import timedelta
+from typing import Any
 
 from django.conf import settings
 from django.http import HttpResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
+
 from rest_framework import status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.serializers import BaseSerializer
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 
@@ -39,7 +42,7 @@ class RouterScriptExecutionViewSet(StandardResponseMixin, ModelViewSet):
     serializer_class = RouterScriptExecutionSerializer
     permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer: RouterScriptExecutionSerializer) -> None:
+    def perform_create(self, serializer: BaseSerializer[Any]) -> None:
         serializer.save(status="PENDING")
 
     @extend_schema(
@@ -53,7 +56,12 @@ class RouterScriptExecutionViewSet(StandardResponseMixin, ModelViewSet):
         execution = self.get_object()
 
         # Enforce router owner permission
-        if not (request.user.is_staff or execution.router.user_routers.filter(user=request.user, role=UserRouter.RouterRole.OWNER).exists()):
+        if not (
+            getattr(request.user, "is_staff", False)
+            or execution.router.user_routers.filter(
+                user=request.user, role=UserRouter.RouterRole.OWNER
+            ).exists()
+        ):
             return error_response(
                 detail=_("You must be the owner of this router to generate download tokens."),
                 code="permission_denied",

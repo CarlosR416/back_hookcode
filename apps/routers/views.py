@@ -7,6 +7,7 @@ UserRouterViewSet — manage user-router associations (owners only, or admin).
 
 import secrets
 from datetime import timedelta
+from typing import Any
 
 from django.conf import settings
 from django.urls import reverse
@@ -17,6 +18,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.serializers import BaseSerializer
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from apps.scripts.models import ScriptDownloadToken
@@ -85,7 +87,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
         Regular users see only the routers they have any role on.
         """
         user = self.request.user
-        if user.is_staff:
+        if getattr(user, "is_staff", False):
             return Router.objects.all()
         owned_router_ids = UserRouter.objects.filter(user=user).values_list(
             "router_id", flat=True
@@ -97,7 +99,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
             return RouterWriteSerializer
         return RouterSerializer
 
-    def perform_create(self, serializer: RouterWriteSerializer) -> None:
+    def perform_create(self, serializer: BaseSerializer[Any]) -> None:
         """Create the router and automatically assign creator as OWNER."""
         router = serializer.save()
         UserRouter.objects.create(
@@ -233,7 +235,7 @@ class UserRouterViewSet(ActionPermissionsMixin, GenericViewSet):
         Regular users see only their own memberships.
         """
         user = self.request.user
-        if user.is_staff:
+        if getattr(user, "is_staff", False):
             return UserRouter.objects.select_related("user", "router").all()
         return UserRouter.objects.select_related("user", "router").filter(user=user)
 
