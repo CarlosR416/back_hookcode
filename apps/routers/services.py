@@ -78,3 +78,55 @@ def provision_router_defaults() -> dict:
         "is_active": True,
         "routeros_version": None,
     }
+
+
+def generate_router_radius_password(
+    length: int = 24, exclude_password: str | None = None
+) -> str:
+    """
+    Generate a cryptographically secure, alphanumeric random password for RADIUS,
+    guaranteed to be different from the provided exclude_password.
+    """
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        candidate = "".join(secrets.choice(alphabet) for _ in range(length))
+        if candidate != exclude_password:
+            return candidate
+
+
+def sync_router_radius_user(
+    router: Router,
+    password: str | None = None,
+) -> dict | None:
+    """
+    Provision a FreeRADIUS user for the router using an independent random password
+    distinct from the router's API credentials.
+    """
+    from apps.radius.services import RadiusService
+
+    if not router.api_username:
+        return None
+
+    radius_password = password or generate_router_radius_password(
+        exclude_password=router.api_password
+    )
+
+    result = RadiusService.add_user(
+        username=router.api_username,
+        password=radius_password,
+    )
+    result["password"] = radius_password
+    return result
+
+
+def delete_router_radius_user(router: Router) -> bool:
+    """
+    Remove the FreeRADIUS user matching the router's API username.
+    """
+    from apps.radius.services import RadiusService
+
+    if not router.api_username:
+        return False
+
+    return RadiusService.delete_user(username=router.api_username)
+

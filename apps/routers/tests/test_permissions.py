@@ -2,6 +2,8 @@
 Sub-domain tests: Router Permissions & Role-Based Access Control.
 """
 
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
@@ -92,8 +94,9 @@ class RouterPermissionsTests(APITestCase):
         self.assertEqual(response.data["data"]["winbox_port"], self.router.port)
         self.assertEqual(response.data["data"]["api_port"], self.router.port + 5000)
 
-    def test_create_router_auto_owner_and_envelope(self):
-        """Creating a router returns data envelope with id/name/description and assigns user as OWNER."""
+    @patch("apps.routers.views.sync_router_radius_user")
+    def test_create_router_auto_owner_and_envelope(self, mock_sync_radius):
+        """Creating a router returns data envelope with id/name/description, assigns user as OWNER, and triggers RADIUS sync."""
         self.client.force_authenticate(user=self.unrelated)
         payload = {
             "name": "New Router by Unrelated",
@@ -125,3 +128,5 @@ class RouterPermissionsTests(APITestCase):
                 role=UserRouter.RouterRole.OWNER,
             ).exists()
         )
+        mock_sync_radius.assert_called_once_with(created_router)
+

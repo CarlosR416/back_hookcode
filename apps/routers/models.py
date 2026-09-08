@@ -73,6 +73,15 @@ class Router(models.Model):
             self.port = get_next_router_identifier()
         super().save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        from .services import delete_router_radius_user
+
+        try:
+            delete_router_radius_user(self)
+        except Exception:
+            pass
+        return super().delete(*args, **kwargs)
+
     def __str__(self) -> str:
         return f"{self.name} ({self.host})"
 

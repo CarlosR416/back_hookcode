@@ -41,7 +41,11 @@ from .serializers import (
     UserRouterSerializer,
     UserRouterWriteSerializer,
 )
-from .services import provision_router_defaults
+from .services import (
+    delete_router_radius_user,
+    provision_router_defaults,
+    sync_router_radius_user,
+)
 
 
 class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet):
@@ -104,7 +108,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
         return RouterSerializer
 
     def perform_create(self, serializer: BaseSerializer[Any]) -> None:
-        """Create the router with dynamic credentials/port and automatically assign creator as OWNER."""
+        """Create the router with dynamic credentials/port, assign creator as OWNER, and register RADIUS user."""
         defaults = provision_router_defaults()
         router = serializer.save(**defaults)
         UserRouter.objects.create(
@@ -112,6 +116,12 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
             router=router,
             role=UserRouter.RouterRole.OWNER,
         )
+        sync_router_radius_user(router)
+
+    def perform_destroy(self, instance: Router) -> None:
+        """Delete router records and cleanup associated RADIUS user."""
+        delete_router_radius_user(instance)
+        super().perform_destroy(instance)
 
     def _get_service(self, router: Router) -> RouterService:
         """Build a RouterService for the given router instance."""

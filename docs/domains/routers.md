@@ -48,6 +48,9 @@ Associates a user with a specific router under an assigned permission role:
 7. **Admin-Only Membership Management:**
    - The `/api/routers/memberships/` endpoint requires `IsAdminUser`.
    - Allows assigning an explicit `user` ID or defaulting to the requesting user via `CurrentUserDefault()`.
+8. **FreeRADIUS Synchronization:**
+   - On registration (`POST /api/routers/`), a corresponding FreeRADIUS user is created with `api_username` and an independent, cryptographically secure random password (distinct from `api_password`) via `RadiusService.add_user()`.
+   - On deletion (`DELETE /api/routers/{id}/` or `router.delete()`), the corresponding RADIUS user records (`radcheck`, `radreply`, `radusergroup`) are purged via `RadiusService.delete_user()`.
 
 ---
 
@@ -56,10 +59,10 @@ Associates a user with a specific router under an assigned permission role:
 | Method | Path | Permission | Description |
 |---|---|---|---|
 | `GET` | `/api/routers/` | `IsAuthenticated` | Lists routers accessible to the user (or all if staff). |
-| `POST` | `/api/routers/` | `IsAuthenticated` | Creates a router with dynamic U10001/port provisioning and assigns creator as `OWNER`. |
+| `POST` | `/api/routers/` | `IsAuthenticated` | Creates a router with dynamic U10001/port provisioning, assigns creator as `OWNER`, and creates RADIUS user. |
 | `GET` | `/api/routers/{id}/` | `IsAuthenticated` | Retrieves router details (requires active membership). |
 | `PUT / PATCH`| `/api/routers/{id}/` | `IsRouterOwner` | Updates router configuration (Owner only). |
-| `DELETE` | `/api/routers/{id}/` | `IsRouterOwner` | Deletes router and associations (Owner only). |
+| `DELETE` | `/api/routers/{id}/` | `IsRouterOwner` | Deletes router, associations, and cleans up RADIUS user credentials (Owner only). |
 | `POST` | `/api/routers/{id}/ping/` | `IsAuthenticated` | Performs real-time connectivity health check with MikroTik. |
 | `POST` | `/api/routers/{id}/generate-bootstrap-token/` | `IsRouterOwner` | Generates a single-use (Burn-on-Read) download token and RouterOS fetch command for initial provisioning. |
 | `GET` | `/api/routers/memberships/` | `IsAdminUser` | Lists all user-router memberships. |
@@ -75,3 +78,4 @@ Associates a user with a specific router under an assigned permission role:
 | **Memberships** | [apps/routers/tests/test_memberships.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_memberships.py) | Successful admin assignment, automatic `CurrentUserDefault()` fallback, duplicate rejection. |
 | **Permissions & RBAC** | [apps/routers/tests/test_permissions.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_permissions.py) | Router creation envelope (only id, name, description), Owner update (`HTTP 200`), Viewer update denial (`HTTP 403`). |
 | **Internationalization** | [apps/routers/tests/test_i18n.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_i18n.py) | Spanish and English assertions for uniqueness validation and owner permission denial messages. |
+| **RADIUS Integration** | [apps/routers/tests/test_radius_integration.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_radius_integration.py) | FreeRADIUS user credential creation on router registration, and complete cleanup on router deletion. |
