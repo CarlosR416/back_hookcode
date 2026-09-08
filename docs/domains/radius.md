@@ -33,7 +33,7 @@ All models specify `managed = False` and map directly to standard FreeRADIUS SQL
 
 | Model | Table | Purpose |
 |---|---|---|
-| **`RadCheck`** | `radcheck` | User check attributes (e.g. `Cleartext-Password`, `Simultaneous-Use`). |
+| **`RadCheck`** | `radcheck` | User check attributes (e.g. `Cleartext-Password`, `Simultaneous-Use`) and optional `client_id` integer. |
 | **`RadReply`** | `radreply` | User reply attributes returned to NAS (e.g. `Mikrotik-Rate-Limit`, `Session-Timeout`). |
 | **`RadUserGroup`** | `radusergroup` | Assigns users to profile groups. |
 | **`RadGroupCheck`** | `radgroupcheck` | Check attributes applied at group level. |
@@ -58,6 +58,7 @@ RadiusService.add_user(
     username="ticket_1001",
     password="securepassword",
     group="Plan-1Hour",
+    client_id=1,
     reply_attributes={
         "Mikrotik-Rate-Limit": "10M/10M",
         "Session-Timeout": "3600",

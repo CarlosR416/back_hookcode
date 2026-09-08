@@ -91,6 +91,35 @@ class RadiusServiceTests(TestCase):
         user_group = RadUserGroup.objects.get(username="ticket_user_1")
         self.assertEqual(user_group.groupname, "VIP-Plan")
 
+    def test_add_radius_user_with_client_id(self):
+        """Verify client_id is correctly persisted to RadCheck records."""
+        result = RadiusService.add_user(
+            username="client_id_user",
+            password="client_pass_123",
+            client_id=42,
+            check_attributes={"Simultaneous-Use": "1"},
+        )
+        self.assertEqual(result["client_id"], 42)
+
+        check_pass = RadCheck.objects.get(
+            username="client_id_user", attribute="Cleartext-Password"
+        )
+        self.assertEqual(check_pass.client_id, 42)
+
+        check_sim = RadCheck.objects.get(
+            username="client_id_user", attribute="Simultaneous-Use"
+        )
+        self.assertEqual(check_sim.client_id, 42)
+
+    def test_add_radius_user_negative_client_id_raises_error(self):
+        """Verify client_id < 0 raises ValueError."""
+        with self.assertRaises(ValueError):
+            RadiusService.add_user(
+                username="invalid_client_user",
+                password="password",
+                client_id=-1,
+            )
+
     def test_get_user_info(self):
         """Verify retrieving user info returns aggregated details."""
         RadiusService.add_user(

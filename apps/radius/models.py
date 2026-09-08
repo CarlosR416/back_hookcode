@@ -22,6 +22,9 @@ class RadCheck(models.Model):
     )
     op = models.CharField(max_length=2, default=":=", verbose_name="Operator")
     value = models.CharField(max_length=253, verbose_name="Value")
+    client_id = models.IntegerField(
+        null=True, blank=True, default=None, verbose_name="Client ID"
+    )
 
     class Meta:
         managed = False

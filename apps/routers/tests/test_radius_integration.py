@@ -64,6 +64,7 @@ class RouterRadiusIntegrationTests(APITestCase):
         self.assertEqual(check_entry.value, result["password"])
         self.assertNotEqual(check_entry.value, router.api_password)
         self.assertEqual(check_entry.op, ":=")
+        self.assertEqual(check_entry.client_id, router.port - 10000)
 
     def test_sync_router_radius_user_custom_password(self):
         """sync_router_radius_user respects an explicitly provided password."""
@@ -77,6 +78,18 @@ class RouterRadiusIntegrationTests(APITestCase):
             username=router.api_username, attribute="Cleartext-Password"
         )
         self.assertEqual(check_entry.value, "custom_radius_secret_999")
+        self.assertEqual(check_entry.client_id, router.port - 10000)
+
+    def test_sync_router_radius_user_raises_error_if_port_minus_10000_is_negative(self):
+        """sync_router_radius_user raises ValueError if router.port - 10000 < 0."""
+        router = Router.objects.create(
+            name="Low Port Router",
+            port=8080,
+            api_username="lowport",
+            api_password="password123",
+        )
+        with self.assertRaises(ValueError):
+            sync_router_radius_user(router)
 
     def test_delete_router_radius_user_removes_radcheck_record(self):
         """delete_router_radius_user cleanly removes the user from RadCheck."""
@@ -114,6 +127,7 @@ class RouterRadiusIntegrationTests(APITestCase):
         self.assertEqual(rad_entry.attribute, "Cleartext-Password")
         self.assertNotEqual(rad_entry.value, router.api_password)
         self.assertTrue(len(rad_entry.value) >= 20)
+        self.assertEqual(rad_entry.client_id, router.port - 10000)
 
     def test_api_delete_router_removes_radius_user(self):
         """DELETE /api/routers/{id}/ performs logical deletion (is_active=False) and removes associated RADIUS user credentials."""

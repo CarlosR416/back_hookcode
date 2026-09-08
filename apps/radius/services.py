@@ -35,6 +35,7 @@ class RadiusService:
         group: str | None = None,
         reply_attributes: dict[str, str] | None = None,
         check_attributes: dict[str, str] | None = None,
+        client_id: int | None = None,
     ) -> dict[str, Any]:
         """
         Create or overwrite a RADIUS user credentials and authorization profile.
@@ -46,8 +47,12 @@ class RadiusService:
                                  (e.g., {'Mikrotik-Rate-Limit': '10M/10M', 'Session-Timeout': '3600'}).
         :param check_attributes: Optional additional check attributes
                                  (e.g., {'Simultaneous-Use': '1'}).
+        :param client_id: Optional integer identifier for the client / router.
         :return: Dictionary summary of the created user records.
         """
+        if client_id is not None and client_id < 0:
+            raise ValueError("client_id cannot be less than zero.")
+
         with cls._atomic():
             # Clean up existing records for idempotency
             RadCheck.objects.filter(username=username).delete()
@@ -60,6 +65,7 @@ class RadiusService:
                 attribute="Cleartext-Password",
                 op=":=",
                 value=password,
+                client_id=client_id,
             )
 
             # 2. Additional check attributes
@@ -70,6 +76,7 @@ class RadiusService:
                         attribute=attr,
                         op=":=",
                         value=val,
+                        client_id=client_id,
                     )
 
             # 3. Reply attributes (rate limits, session timeouts, etc.)
@@ -96,6 +103,7 @@ class RadiusService:
             "username": username,
             "group": group,
             "reply_attributes": created_replies,
+            "client_id": client_id,
         }
 
     @classmethod

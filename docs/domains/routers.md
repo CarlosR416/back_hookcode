@@ -52,6 +52,7 @@ Associates a user with a specific router under an assigned permission role:
 8. **FreeRADIUS Synchronization & Atomic Provisioning:**
    - On registration (`POST /api/routers/`), router creation, owner membership assignment, and FreeRADIUS user provisioning are executed within an atomic transaction (`@transaction.atomic`). If FreeRADIUS user creation fails, the entire transaction is rolled back and no router or membership is created.
    - A corresponding FreeRADIUS user is created with `api_username` and an independent, cryptographically secure random password (distinct from `api_password`) via `RadiusService.add_user()`.
+   - The user record in `radcheck` is populated with `client_id = router.port - 10000`. If `router.port - 10000 < 0`, an error (`ValueError`) is raised.
    - On deletion (`DELETE /api/routers/{id}/` or `router.soft_delete()`), the corresponding RADIUS user records (`radcheck`, `radreply`, `radusergroup`) are purged via `RadiusService.delete_user()`.
 9. **Owner-Only Logical Deletion:**
    - Deletion of a router (`DELETE /api/routers/{id}/`) performs **logical deletion** (soft delete: sets `is_active = False`) and purges its FreeRADIUS user credentials.

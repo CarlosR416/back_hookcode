@@ -100,12 +100,21 @@ def sync_router_radius_user(
 ) -> dict | None:
     """
     Provision a FreeRADIUS user for the router using an independent random password
-    distinct from the router's API credentials.
+    distinct from the router's API credentials, and assign client_id = router.port - 10000.
     """
     from apps.radius.services import RadiusService
 
     if not router.api_username:
         raise ValueError("Router must have an api_username to provision a RADIUS user.")
+
+    if router.port is None:
+        raise ValueError("Router must have a port to provision a RADIUS user.")
+
+    client_id = router.port - 10000
+    if client_id < 0:
+        raise ValueError(
+            f"Router client_id cannot be less than zero (port: {router.port}, client_id: {client_id})."
+        )
 
     radius_password = password or generate_router_radius_password(
         exclude_password=router.api_password
@@ -114,6 +123,7 @@ def sync_router_radius_user(
     result = RadiusService.add_user(
         username=router.api_username,
         password=radius_password,
+        client_id=client_id,
     )
     result["password"] = radius_password
     return result
