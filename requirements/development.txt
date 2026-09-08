@@ -2,3 +2,5 @@
 
 django-debug-toolbar==4.4.6
 ipython==8.26.0
+django-stubs==6.1.0
+djangorestframework-stubs==3.18.1

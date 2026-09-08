@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Your Email - WiFi Tickets</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 0;
+      color: #1e293b;
+    }
+    .email-container {
+      max-width: 520px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+    }
+    .header {
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      padding: 32px 24px;
+      text-align: center;
+      color: #ffffff;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .content {
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .content p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #475569;
+      margin: 0 0 20px 0;
+    }
+    .otp-card {
+      background: #f8fafc;
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 28px 0;
+      display: inline-block;
+      width: 80%;
+    }
+    .otp-code {
+      font-family: "Courier New", Courier, monospace;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: 8px;
+      color: #0f172a;
+      margin: 0;
+    }
+    .timer-badge {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #d97706;
+      background-color: #fef3c7;
+      padding: 4px 12px;
+      border-radius: 9999px;
+    }
+    .footer {
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="header">
+      <h1>WiFi Tickets</h1>
+    </div>
+    <div class="content">
+      <p>Hello <strong>{{ user.first_name|default:"there" }}</strong>,</p>
+      <p>Thank you for signing up for WiFi Tickets. Please use the following 6-digit verification code to complete your registration:</p>
+      <div class="otp-card">
+        <div class="otp-code">{{ code }}</div>
+        <div class="timer-badge">Expires in {{ expiration_minutes }} minutes</div>
+      </div>
+      <p style="font-size: 13px; color: #64748b;">If you did not request this verification code, no further action is required. Please ignore this email.</p>
+    </div>
+    <div class="footer">
+      &copy; WiFi Tickets Platform. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

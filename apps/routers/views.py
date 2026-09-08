@@ -5,13 +5,27 @@ RouterViewSet   — CRUD for Router records (scoped to user's own routers).
 UserRouterViewSet — manage user-router associations (owners only, or admin).
 """
 
+import secrets
+from datetime import timedelta
+from typing import Any
+
+from django.conf import settings
+from django.urls import reverse
+from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.serializers import BaseSerializer
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
+from apps.scripts.models import ScriptDownloadToken
+from apps.scripts.serializers import (
+    GenerateBootstrapTokenSerializer,
+    ScriptDownloadTokenResponseSerializer,
+)
 from core.mixins import ActionPermissionsMixin, StandardResponseMixin
 from core.responses import created_response, no_content_response, success_response
 
@@ -32,15 +46,16 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
     """
     CRUD endpoints for registered MikroTik routers.
 
-    list:           GET  /api/routers/
-    create:         POST /api/routers/
-    retrieve:       GET  /api/routers/{id}/
-    update:         PUT  /api/routers/{id}/
-    partial_update: PATCH /api/routers/{id}/
-    destroy:        DELETE /api/routers/{id}/
-    ping:           GET  /api/routers/{id}/ping/
-    resource:       GET  /api/routers/{id}/resource/
-    interfaces:     GET  /api/routers/{id}/interfaces/
+    list:                     GET  /api/routers/
+    create:                   POST /api/routers/
+    retrieve:                 GET  /api/routers/{id}/
+    update:                   PUT  /api/routers/{id}/
+    partial_update:           PATCH /api/routers/{id}/
+    destroy:                  DELETE /api/routers/{id}/
+    ping:                     GET  /api/routers/{id}/ping/
+    resource:                 GET  /api/routers/{id}/resource/
+    interfaces:               GET  /api/routers/{id}/interfaces/
+    generate_bootstrap_token: POST /api/routers/{id}/generate-bootstrap-token/
 
     Access policy
     -------------
@@ -48,7 +63,8 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
     - retrieve / ping /
       resource / interfaces   → IsRouterMember (owner OR viewer)
     - update / partial_update
-      / destroy               → IsRouterOwner (owner only)
+      / destroy /
+      generate_bootstrap_token → IsRouterOwner (owner only)
     """
 
     permission_classes = [IsAuthenticated]
@@ -62,6 +78,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
         "update": [IsRouterOwner],
         "partial_update": [IsRouterOwner],
         "destroy": [IsRouterOwner],
+        "generate_bootstrap_token": [IsRouterOwner],
     }
 
     def get_queryset(self):
@@ -70,7 +87,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
         Regular users see only the routers they have any role on.
         """
         user = self.request.user
-        if user.is_staff:
+        if getattr(user, "is_staff", False):
             return Router.objects.all()
         owned_router_ids = UserRouter.objects.filter(user=user).values_list(
             "router_id", flat=True
@@ -82,7 +99,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
             return RouterWriteSerializer
         return RouterSerializer
 
-    def perform_create(self, serializer: RouterWriteSerializer) -> None:
+    def perform_create(self, serializer: BaseSerializer[Any]) -> None:
         """Create the router and automatically assign creator as OWNER."""
         router = serializer.save()
         UserRouter.objects.create(
@@ -129,6 +146,61 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
         svc = self._get_service(router)
         return success_response(svc.list_interfaces())
 
+    @extend_schema(
+        request=GenerateBootstrapTokenSerializer,
+        responses={201: ScriptDownloadTokenResponseSerializer},
+        tags=["routers"],
+    )
+    @action(detail=True, methods=["post"], url_path="generate-bootstrap-token")
+    def generate_bootstrap_token(self, request: Request, pk: int | None = None) -> Response:
+        """
+        Generate a single-use (Burn-on-Read) download token for this router.
+        Can be used by RouterOS fetch command to safely download sensitive setup configurations.
+        """
+        router = self.get_object()
+        serializer = GenerateBootstrapTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+        template = data.get("template")
+        variables = data.get("variables", {})
+        expiration_minutes = data.get(
+            "expiration_minutes",
+            getattr(settings, "SCRIPT_TOKEN_EXPIRATION_MINUTES", 10),
+        )
+        include_cleanup = data.get("include_cleanup", True)
+        filename = data.get("filename", "setup.rsc")
+
+        token = secrets.token_urlsafe(32)
+        expires_at = timezone.now() + timedelta(minutes=expiration_minutes)
+
+        token_record = ScriptDownloadToken.objects.create(
+            router=router,
+            template=template,
+            variables_used=variables,
+            token=token,
+            expires_at=expires_at,
+            include_cleanup=include_cleanup,
+            filename=filename,
+        )
+
+        download_url = request.build_absolute_uri(
+            reverse("scripts:script-download", kwargs={"token": token})
+        )
+        routeros_cmd = (
+            f'/tool fetch url="{download_url}" mode=https dst-path="{filename}"; '
+            f':delay 1s; /import {filename}'
+        )
+
+        return created_response(
+            {
+                "token": token_record.token,
+                "download_url": download_url,
+                "routeros_command": routeros_cmd,
+                "expires_at": token_record.expires_at,
+            }
+        )
+
 
 class UserRouterViewSet(ActionPermissionsMixin, GenericViewSet):
     """
@@ -163,7 +235,7 @@ class UserRouterViewSet(ActionPermissionsMixin, GenericViewSet):
         Regular users see only their own memberships.
         """
         user = self.request.user
-        if user.is_staff:
+        if getattr(user, "is_staff", False):
             return UserRouter.objects.select_related("user", "router").all()
         return UserRouter.objects.select_related("user", "router").filter(user=user)
 
