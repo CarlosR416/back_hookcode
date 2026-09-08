@@ -127,6 +127,11 @@ if "test" in sys.argv:
         "django.contrib.auth.hashers.MD5PasswordHasher",
     ]
     EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+    # In tests, radius uses the local default database configuration instead of the external server
+    DATABASES["radius"] = {
+        **DATABASES["default"],
+        "TEST": {"NAME": "test_radius"},
+    }
 
 
 # ── Internationalisation ────────────────────────────────────────────────────────
