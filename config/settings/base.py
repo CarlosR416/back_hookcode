@@ -42,6 +42,7 @@ LOCAL_APPS = [
     "apps.hotspot",
     "apps.tickets",
     "apps.scripts",
+    "apps.radius",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -90,8 +91,20 @@ DATABASES = {
         "PASSWORD": config("DB_PASSWORD", default="wifitickets_pass"),
         "HOST": config("DB_HOST", default="localhost"),
         "PORT": config("DB_PORT", default="5432"),
-    }
+    },
+    "radius": {
+        "ENGINE": config("RADIUS_DB_ENGINE", default=config("DB_ENGINE", default="django.db.backends.postgresql")),
+        "NAME": config("RADIUS_DB_NAME", default=config("DB_NAME", default="wifitickets")),
+        "USER": config("RADIUS_DB_USER", default=config("DB_USER", default="wifitickets_user")),
+        "PASSWORD": config("RADIUS_DB_PASSWORD", default=config("DB_PASSWORD", default="wifitickets_pass")),
+        "HOST": config("RADIUS_DB_HOST", default=config("DB_HOST", default="localhost")),
+        "PORT": config("RADIUS_DB_PORT", default=config("DB_PORT", default="5432")),
+    },
 }
+
+DATABASE_ROUTERS = [
+    "apps.radius.routers.RadiusDatabaseRouter",
+]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
