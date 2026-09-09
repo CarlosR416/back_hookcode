@@ -14,6 +14,11 @@ Represents a physical or virtual MikroTik RouterOS device:
 * **Computed Ports:**
   - `winbox_port`: MikroTik Winbox remote management port (identical to base `port`, e.g., `10001`).
   - `api_port`: MikroTik REST API HTTPS port (base `port + 5000`, e.g., `15001`).
+* **Computed VPN State (Internal Consumption):**
+  - `is_vpn_connected`: Boolean flag indicating if the router has an active VPN session.
+  - `vpn_status`: Current VPN status (`NEVER_CONNECTED`, `CONNECTED`, `DISCONNECTED`).
+  - `vpn_tunnel_ip`: Tunnel IP assigned by the VPN server (`framedipaddress`).
+  - `vpn_connection_info`: Complete structured dictionary.
 * **API Credentials:** `api_username` (unique, sequentially assigned starting at `U10001` matching port), `api_password` (unique 24-character cryptographic alphanumeric string, shielded as write-only).
 * **RouterOS Version:** Nullable (`null=True, default=None`), or set to `v6` / `v7`.
 
@@ -67,6 +72,14 @@ Associates a user with a specific router under an assigned permission role:
    - Dynamically extracts FreeRADIUS user credentials associated with the router (`router.api_username` and `RadCheck.value`).
    - Builds public certificate download URL (`/api/vpn/nodes/{id}/certificate/?raw=true`), IPsec peer configuration with `vpn_node.host`, and a top-priority firewall input rule (`place-before=0`) matching `vpn_node.internal_ip`.
    - Strictly restricted to router owners (`IsRouterOwner`); viewers receive `HTTP 403 Forbidden`.
+11. **VPN Connection Status Inspection (`vpn_connection`):**
+   - Evaluates the router's connection status against FreeRADIUS accounting (`radacct`):
+     - `NEVER_CONNECTED`: No accounting records exist for `router.api_username`.
+     - `CONNECTED`: An active session exists (`acctstoptime IS NULL`), providing `tunnel_ip` and `connected_at`.
+     - `DISCONNECTED`: Only closed sessions exist, providing `tunnel_ip` and `last_seen` timestamp.
+   - Exposes structured nested object `vpn_connection` in `RouterSerializer` (API representation).
+   - Exposes flat properties on the `Router` model (`is_vpn_connected`, `vpn_status`, `vpn_tunnel_ip`) for internal system consumption.
+   - Endpoint `GET /api/routers/` uses `RouterListSerializer` with batch prefetching (`get_batch_routers_vpn_connection_info`) to prevent N+1 queries. It strictly omits internal IPs (`host` and `vpn_connection.tunnel_ip`) from the list payload to prevent leakage.
 
 ---
 
@@ -74,9 +87,9 @@ Associates a user with a specific router under an assigned permission role:
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
-| `GET` | `/api/routers/` | `IsAuthenticated` | Lists routers accessible to the user (or all if staff). |
+| `GET` | `/api/routers/` | `IsAuthenticated` | Lists routers accessible to the user with batch-calculated `vpn_connection` status. |
 | `POST` | `/api/routers/` | `IsAuthenticated` | Creates a router with dynamic U10001/port provisioning, assigns creator as `OWNER`, and creates RADIUS user. |
-| `GET` | `/api/routers/{id}/` | `IsAuthenticated` | Retrieves router details (requires active membership). |
+| `GET` | `/api/routers/{id}/` | `IsAuthenticated` | Retrieves router details including `vpn_connection` (requires active membership). |
 | `PUT / PATCH`| `/api/routers/{id}/` | `IsRouterOwner` | Updates router configuration (Owner only). |
 | `DELETE` | `/api/routers/{id}/` | `IsRouterOwner` | Performs logical deletion (soft delete, `is_active=False`) and cleans up RADIUS user credentials (Owner only). |
 | `POST` | `/api/routers/{id}/ping/` | `IsAuthenticated` | Performs real-time connectivity health check with MikroTik. |
@@ -96,4 +109,4 @@ Associates a user with a specific router under an assigned permission role:
 | **Permissions & RBAC** | [apps/routers/tests/test_permissions.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_permissions.py) | Router creation envelope (only id, name, description), Owner update (`HTTP 200`), Viewer update denial (`HTTP 403`), Owner soft-delete (`HTTP 204`), Viewer delete denial (`HTTP 403`), Non-owner staff delete denial (`HTTP 403`). |
 | **Internationalization** | [apps/routers/tests/test_i18n.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_i18n.py) | Spanish and English assertions for uniqueness validation and owner permission denial messages. |
 | **RADIUS Integration** | [apps/routers/tests/test_radius_integration.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_radius_integration.py) | FreeRADIUS user credential creation on router registration, and complete cleanup on router logical deletion. |
-| **VPN Provisioning** | [apps/routers/tests/test_vpn_provisioning.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_vpn_provisioning.py) | Owner token generation, dynamic variable interpolation, unauthenticated download & token burning (HTTP 410 on second read), viewer permission denial (HTTP 403), inactive VPN node error (HTTP 400). |
+| **VPN Provisioning & Status** | [apps/routers/tests/test_vpn_provisioning.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_vpn_provisioning.py) | Owner token generation, dynamic variable interpolation, token burning, viewer denial, inactive node error, and `radacct` status inspection (`NEVER_CONNECTED`, `CONNECTED`, `DISCONNECTED`, batch list prefetching). |

@@ -242,3 +242,128 @@ def generate_router_vpn_provisioning_token(
     }
 
 
+def get_router_vpn_connection_info(router: Router) -> dict:
+    """
+    Query FreeRADIUS accounting (radacct) to evaluate the router's VPN connection status.
+    Returns a dictionary structured as:
+      - status: 'NEVER_CONNECTED' | 'CONNECTED' | 'DISCONNECTED'
+      - is_connected: bool
+      - tunnel_ip: str | None
+      - connected_at: datetime | None
+      - last_seen: datetime | None
+    """
+    from apps.radius.models import RadAcct
+
+    default_info = {
+        "status": "NEVER_CONNECTED",
+        "is_connected": False,
+        "tunnel_ip": None,
+        "connected_at": None,
+        "last_seen": None,
+    }
+
+    if not router.api_username:
+        return default_info
+
+    try:
+        # Check for active session first (acctstoptime IS NULL)
+        active_session = (
+            RadAcct.objects.filter(username=router.api_username, acctstoptime__isnull=True)
+            .order_by("-acctstarttime")
+            .first()
+        )
+        if active_session:
+            return {
+                "status": "CONNECTED",
+                "is_connected": True,
+                "tunnel_ip": active_session.framedipaddress,
+                "connected_at": active_session.acctstarttime,
+                "last_seen": None,
+            }
+
+        # Check for historical sessions
+        last_session = (
+            RadAcct.objects.filter(username=router.api_username)
+            .order_by("-acctstoptime", "-acctstarttime")
+            .first()
+        )
+        if last_session:
+            return {
+                "status": "DISCONNECTED",
+                "is_connected": False,
+                "tunnel_ip": last_session.framedipaddress,
+                "connected_at": last_session.acctstarttime,
+                "last_seen": last_session.acctstoptime,
+            }
+
+        return default_info
+    except Exception:
+        return default_info
+
+
+def get_batch_routers_vpn_connection_info(routers: list[Router]) -> dict[int, dict]:
+    """
+    Batch query FreeRADIUS accounting (radacct) for multiple routers in a single SQL operation.
+    Maps router.id -> vpn_connection_info dict.
+    """
+    from apps.radius.models import RadAcct
+
+    default_info = {
+        "status": "NEVER_CONNECTED",
+        "is_connected": False,
+        "tunnel_ip": None,
+        "connected_at": None,
+        "last_seen": None,
+    }
+
+    result = {r.id: dict(default_info) for r in routers}
+    usernames = [r.api_username for r in routers if r.api_username]
+    if not usernames:
+        return result
+
+    try:
+        # 1. Active sessions
+        active_records = RadAcct.objects.filter(
+            username__in=usernames, acctstoptime__isnull=True
+        )
+        active_map: dict[str, dict] = {}
+        for rec in active_records:
+            active_map[rec.username] = {
+                "status": "CONNECTED",
+                "is_connected": True,
+                "tunnel_ip": rec.framedipaddress,
+                "connected_at": rec.acctstarttime,
+                "last_seen": None,
+            }
+
+        # 2. Historical sessions for those without active sessions
+        remaining_usernames = set(usernames) - set(active_map.keys())
+        history_map: dict[str, dict] = {}
+        if remaining_usernames:
+            historical_records = (
+                RadAcct.objects.filter(username__in=remaining_usernames)
+                .order_by("username", "-acctstoptime", "-acctstarttime")
+            )
+            for rec in historical_records:
+                if rec.username not in history_map:
+                    history_map[rec.username] = {
+                        "status": "DISCONNECTED",
+                        "is_connected": False,
+                        "tunnel_ip": rec.framedipaddress,
+                        "connected_at": rec.acctstarttime,
+                        "last_seen": rec.acctstoptime,
+                    }
+
+        for router in routers:
+            uname = router.api_username
+            if uname in active_map:
+                result[router.id] = active_map[uname]
+            elif uname in history_map:
+                result[router.id] = history_map[uname]
+
+        return result
+    except Exception:
+        return result
+
+
+

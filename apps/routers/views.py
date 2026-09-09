@@ -39,6 +39,7 @@ from .permissions import IsAdminOrReadOwner, IsRouterMember, IsRouterOwner
 from .serializers import (
     GenerateVpnTokenSerializer,
     RouterCreateSerializer,
+    RouterListSerializer,
     RouterSerializer,
     RouterWriteSerializer,
     UserRouterSerializer,
@@ -46,6 +47,7 @@ from .serializers import (
 )
 from .services import (
     generate_router_vpn_provisioning_token,
+    get_batch_routers_vpn_connection_info,
     provision_router_defaults,
     sync_router_radius_user,
 )
@@ -115,9 +117,28 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
     def get_serializer_class(self):
         if self.action == "create":
             return RouterCreateSerializer
+        if self.action == "list":
+            return RouterListSerializer
         if self.action in ["update", "partial_update"]:
             return RouterWriteSerializer
         return RouterSerializer
+
+    def list(self, request: Request, *args, **kwargs) -> Response:
+        """List routers accessible to the user, batch-populating VPN connection status."""
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            vpn_map = get_batch_routers_vpn_connection_info(list(page))
+            context = {**self.get_serializer_context(), "vpn_connections_map": vpn_map}
+            serializer = self.get_serializer(page, many=True, context=context)
+            return self.get_paginated_response(serializer.data)
+
+        router_list = list(queryset)
+        vpn_map = get_batch_routers_vpn_connection_info(router_list)
+        context = {**self.get_serializer_context(), "vpn_connections_map": vpn_map}
+        serializer = self.get_serializer(router_list, many=True, context=context)
+        return Response(serializer.data)
 
     @transaction.atomic
     def perform_create(self, serializer: BaseSerializer[Any]) -> None:

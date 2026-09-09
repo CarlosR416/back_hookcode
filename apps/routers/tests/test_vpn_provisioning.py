@@ -2,13 +2,15 @@
 Sub-domain tests: Automated IKEv2 VPN Client Provisioning for Routers.
 """
 
+from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.db import connections
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.radius.models import RadCheck, RadReply, RadUserGroup
+from apps.radius.models import RadAcct, RadCheck, RadReply, RadUserGroup
 from apps.routers.models import Router, UserRouter
 from apps.routers.services import provision_router_defaults, sync_router_radius_user
 from apps.scripts.models import ScriptTemplate
@@ -23,7 +25,7 @@ class RouterVpnProvisioningTests(APITestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls._radius_models = [RadCheck, RadReply, RadUserGroup]
+        cls._radius_models = [RadCheck, RadReply, RadUserGroup, RadAcct]
         with connections["radius"].schema_editor() as editor:
             for model in cls._radius_models:
                 editor.create_model(model)
@@ -207,3 +209,104 @@ class RouterVpnProvisioningTests(APITestCase):
         response = self.client.post(self.generate_url, data={}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["error"]["code"], "vpn_provisioning_error")
+
+    def test_router_vpn_connection_status_never_connected(self):
+        """When no radacct records exist, status is NEVER_CONNECTED both internally and in API."""
+        # 1. Internal model properties (Option B)
+        self.assertFalse(self.router.is_vpn_connected)
+        self.assertEqual(self.router.vpn_status, "NEVER_CONNECTED")
+        self.assertIsNone(self.router.vpn_tunnel_ip)
+
+        # 2. API response representation (Option A)
+        self.client.force_authenticate(user=self.owner)
+        detail_url = reverse("routers:routers-detail", kwargs={"pk": self.router.pk})
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        vpn_info = response.data["data"]["vpn_connection"]
+        self.assertEqual(vpn_info["status"], "NEVER_CONNECTED")
+        self.assertFalse(vpn_info["is_connected"])
+        self.assertIsNone(vpn_info["tunnel_ip"])
+        self.assertIsNone(vpn_info["connected_at"])
+        self.assertIsNone(vpn_info["last_seen"])
+
+    def test_router_vpn_connection_status_connected(self):
+        """When an active radacct session exists (acctstoptime IS NULL), status is CONNECTED."""
+        now = timezone.now()
+        RadAcct.objects.create(
+            acctsessionid="sess-vpn-01",
+            acctuniqueid="uniq-vpn-01",
+            username=self.router.api_username,
+            nasipaddress="35.170.65.8",
+            acctstarttime=now,
+            acctstoptime=None,
+            framedipaddress="10.8.0.2",
+        )
+
+        # 1. Internal model properties (Option B)
+        self.assertTrue(self.router.is_vpn_connected)
+        self.assertEqual(self.router.vpn_status, "CONNECTED")
+        self.assertEqual(self.router.vpn_tunnel_ip, "10.8.0.2")
+
+        # 2. API response representation (Option A)
+        self.client.force_authenticate(user=self.owner)
+        detail_url = reverse("routers:routers-detail", kwargs={"pk": self.router.pk})
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        vpn_info = response.data["data"]["vpn_connection"]
+        self.assertEqual(vpn_info["status"], "CONNECTED")
+        self.assertTrue(vpn_info["is_connected"])
+        self.assertEqual(vpn_info["tunnel_ip"], "10.8.0.2")
+        self.assertIsNotNone(vpn_info["connected_at"])
+        self.assertIsNone(vpn_info["last_seen"])
+
+    def test_router_vpn_connection_status_disconnected(self):
+        """When sessions exist but all have acctstoptime set, status is DISCONNECTED with last_seen."""
+        start_time = timezone.now() - timedelta(hours=3)
+        stop_time = timezone.now() - timedelta(hours=1)
+        RadAcct.objects.create(
+            acctsessionid="sess-vpn-closed",
+            acctuniqueid="uniq-vpn-closed",
+            username=self.router.api_username,
+            nasipaddress="35.170.65.8",
+            acctstarttime=start_time,
+            acctstoptime=stop_time,
+            framedipaddress="10.8.0.5",
+        )
+
+        # 1. Internal model properties (Option B)
+        self.assertFalse(self.router.is_vpn_connected)
+        self.assertEqual(self.router.vpn_status, "DISCONNECTED")
+        self.assertEqual(self.router.vpn_tunnel_ip, "10.8.0.5")
+
+        # 2. API response representation (Option A)
+        self.client.force_authenticate(user=self.owner)
+        detail_url = reverse("routers:routers-detail", kwargs={"pk": self.router.pk})
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        vpn_info = response.data["data"]["vpn_connection"]
+        self.assertEqual(vpn_info["status"], "DISCONNECTED")
+        self.assertFalse(vpn_info["is_connected"])
+        self.assertEqual(vpn_info["tunnel_ip"], "10.8.0.5")
+        self.assertIsNotNone(vpn_info["last_seen"])
+
+    def test_router_list_batch_vpn_connection_status(self):
+        """Router list endpoint batch-populates VPN status and omits internal IPs (host and tunnel_ip)."""
+        self.client.force_authenticate(user=self.owner)
+        list_url = reverse("routers:routers-list")
+        response = self.client.get(list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        results = response.data.get("results", response.data.get("data", []))
+        self.assertTrue(len(results) >= 1)
+        router_data = next(r for r in results if r["id"] == self.router.pk)
+        self.assertIn("vpn_connection", router_data)
+        self.assertEqual(router_data["vpn_connection"]["status"], "NEVER_CONNECTED")
+
+        # Internal IPs MUST NOT be leaked in the list endpoint
+        self.assertNotIn("host", router_data)
+        self.assertNotIn("tunnel_ip", router_data["vpn_connection"])
+
+

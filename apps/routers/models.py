@@ -67,6 +67,29 @@ class Router(models.Model):
         """MikroTik REST API port (base port + 5000)."""
         return (self.port + 5000) if self.port is not None else None
 
+    @property
+    def vpn_connection_info(self) -> dict:
+        """
+        Return structured VPN connection info queried from FreeRADIUS accounting (radacct).
+        """
+        from .services import get_router_vpn_connection_info
+        return get_router_vpn_connection_info(self)
+
+    @property
+    def is_vpn_connected(self) -> bool:
+        """Internal convenience property: whether the router has an active VPN session."""
+        return self.vpn_connection_info["is_connected"]
+
+    @property
+    def vpn_status(self) -> str:
+        """Internal convenience property: 'NEVER_CONNECTED' | 'CONNECTED' | 'DISCONNECTED'."""
+        return self.vpn_connection_info["status"]
+
+    @property
+    def vpn_tunnel_ip(self) -> str | None:
+        """Internal convenience property: tunnel IP assigned by the VPN server."""
+        return self.vpn_connection_info["tunnel_ip"]
+
     def save(self, *args, **kwargs):
         if not self.port:
             from .services import get_next_router_identifier
