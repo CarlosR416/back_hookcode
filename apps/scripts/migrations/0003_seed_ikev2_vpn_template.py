@@ -7,7 +7,16 @@ IKEV2_TEMPLATE_DESC = (
     "Automated MikroTik IKEv2 client setup with server certificate import, "
     "dynamic FreeRADIUS credentials, and high-priority firewall rule."
 )
-IKEV2_TEMPLATE_CONTENT = """# 1. Download and import VPN server certificate
+IKEV2_TEMPLATE_CONTENT = """# 0. Clean up previous configuration if present (idempotency)
+/ip ipsec identity remove [find comment="codehook-vpn-conect"];
+/ip ipsec peer remove [find name="codehook-vpn-conect"];
+/ip ipsec mode-config remove [find name="codehook-vpn-conect"];
+/ip ipsec proposal remove [find name="codehook-vpn-conect"];
+/ip ipsec profile remove [find name="codehook-vpn-conect"];
+/ip firewall filter remove [find comment="codehook-vpn-conect"];
+/certificate remove [find name~"IKEv2-cert"];
+
+# 1. Download and import VPN server certificate
 /tool fetch url="{{ cert_download_url }}" mode=https dst-path="IKEv2-cert.pem";
 :delay 2s;
 /certificate import file-name=IKEv2-cert.pem passphrase="";
@@ -15,29 +24,29 @@ IKEV2_TEMPLATE_CONTENT = """# 1. Download and import VPN server certificate
 
 # 2. IPsec Profile
 /ip ipsec profile
-add name=profile-ikev2 dh-group=ecp256,modp2048 enc-algorithm=aes-256 hash-algorithm=sha256
+add name=codehook-vpn-conect dh-group=ecp256,modp2048 enc-algorithm=aes-256 hash-algorithm=sha256 comment="codehook-vpn-conect"
 
 # 3. IPsec Proposal
 /ip ipsec proposal
-add name=proposal-ikev2 auth-algorithms=sha256 enc-algorithms=aes-256-cbc pfs-group=none
+add name=codehook-vpn-conect auth-algorithms=sha256 enc-algorithms=aes-256-cbc pfs-group=none comment="codehook-vpn-conect"
 
 # 4. IPsec Peer
 /ip ipsec peer
-add name=peer-ikev2 address={{ vpn_server_address }} profile=profile-ikev2 exchange-mode=ike2
+add name=codehook-vpn-conect address={{ vpn_server_address }} profile=codehook-vpn-conect exchange-mode=ike2 comment="codehook-vpn-conect"
 
 # 5. IPsec Mode Config
 /ip ipsec mode-config
-add name=ikev2-request-ip responder=no
+add name=codehook-vpn-conect responder=no comment="codehook-vpn-conect"
 
 # 6. IPsec Identity (Dynamic RADIUS credentials)
 /ip ipsec identity
-add peer=peer-ikev2 auth-method=eap certificate="IKEv2-cert.pem_0" \\
+add peer=codehook-vpn-conect auth-method=eap certificate="IKEv2-cert.pem_0" \\
     eap-methods=eap-mschapv2 username="{{ radius_username }}" password="{{ radius_password }}" \\
-    generate-policy=port-strict mode-config=ikev2-request-ip
+    generate-policy=port-strict mode-config=codehook-vpn-conect comment="codehook-vpn-conect"
 
 # 7. Firewall filter rule (placed first in the input chain)
 /ip firewall filter
-add chain=input src-address={{ vpn_server_internal_ip }} action=accept comment="Allow VPN Server traffic" place-before=0
+add chain=input src-address={{ vpn_server_internal_ip }} action=accept comment="codehook-vpn-conect" place-before=0
 """
 
 
