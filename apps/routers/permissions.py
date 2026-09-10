@@ -56,6 +56,8 @@ class IsRouterOwner(BasePermission):
         return bool(request.user and request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj) -> bool:
+        if getattr(view, "action", None) == "destroy":
+            return _is_router_owner(request.user, obj.pk)
         if request.user.is_staff:
             return True
         return _is_router_owner(request.user, obj.pk)

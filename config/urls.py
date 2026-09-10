@@ -21,6 +21,7 @@ urlpatterns = [
     path("api/hotspot/", include("apps.hotspot.urls", namespace="hotspot")),
     path("api/tickets/", include("apps.tickets.urls", namespace="tickets")),
     path("api/scripts/", include("apps.scripts.urls", namespace="scripts")),
+    path("api/vpn/", include("apps.vpn.urls", namespace="vpn")),
 
     # API Schema & Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

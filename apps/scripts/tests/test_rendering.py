@@ -14,6 +14,7 @@ class ScriptRenderingTests(TestCase):
         cls.router = Router.objects.create(
             name="Test Router",
             host="192.168.1.1",
+            port=443,
             api_username="admin",
             api_password="password",
         )

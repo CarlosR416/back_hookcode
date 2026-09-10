@@ -11,8 +11,44 @@ from .models import Router, UserRouter
 User = get_user_model()
 
 
+class RouterVpnConnectionSerializer(serializers.Serializer):
+    """Structured representation of the router's VPN connection status."""
+
+    status = serializers.ChoiceField(
+        choices=["NEVER_CONNECTED", "CONNECTED", "DISCONNECTED"],
+        help_text=_("VPN connection status deduced from FreeRADIUS accounting records."),
+    )
+    is_connected = serializers.BooleanField(
+        help_text=_("Whether the router is currently connected to the VPN server."),
+    )
+    tunnel_ip = serializers.CharField(
+        allow_null=True,
+        help_text=_("Internal tunnel IP address assigned to the router by the VPN server."),
+    )
+    connected_at = serializers.DateTimeField(
+        allow_null=True,
+        help_text=_("Timestamp when the current or last VPN session started."),
+    )
+    last_seen = serializers.DateTimeField(
+        allow_null=True,
+        help_text=_("Timestamp when the last VPN session ended."),
+    )
+
+
 class RouterSerializer(serializers.ModelSerializer):
     """Read serializer — never exposes the api_password."""
+
+    api_port = serializers.IntegerField(
+        read_only=True,
+        help_text=_("Port used for MikroTik REST API connections (base port + 5000)."),
+    )
+    winbox_port = serializers.IntegerField(
+        read_only=True,
+        help_text=_("Port used for MikroTik Winbox management (identical to base port)."),
+    )
+    vpn_connection = serializers.SerializerMethodField(
+        help_text=_("Structured VPN connection info queried from FreeRADIUS accounting."),
+    )
 
     class Meta:
         model = Router
@@ -21,15 +57,89 @@ class RouterSerializer(serializers.ModelSerializer):
             "name",
             "host",
             "port",
+            "api_port",
+            "winbox_port",
             "api_username",
             "ssl_verify",
             "routeros_version",
             "is_active",
             "description",
+            "vpn_connection",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "api_port",
+            "winbox_port",
+            "vpn_connection",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_vpn_connection(self, obj: Router) -> dict:
+        vpn_cache = self.context.get("vpn_connections_map")
+        if vpn_cache is not None and obj.id in vpn_cache:
+            return vpn_cache[obj.id]
+        return obj.vpn_connection_info
+
+
+class RouterListSerializer(serializers.ModelSerializer):
+    """
+    List serializer — omits internal IP addresses (router host and vpn_connection.tunnel_ip).
+    """
+
+    api_port = serializers.IntegerField(
+        read_only=True,
+        help_text=_("Port used for MikroTik REST API connections (base port + 5000)."),
+    )
+    winbox_port = serializers.IntegerField(
+        read_only=True,
+        help_text=_("Port used for MikroTik Winbox management (identical to base port)."),
+    )
+    vpn_connection = serializers.SerializerMethodField(
+        help_text=_("Structured VPN connection info without internal tunnel IP."),
+    )
+
+    class Meta:
+        model = Router
+        fields = [
+            "id",
+            "name",
+            "port",
+            "api_port",
+            "winbox_port",
+            "api_username",
+            "ssl_verify",
+            "routeros_version",
+            "is_active",
+            "description",
+            "vpn_connection",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "api_port",
+            "winbox_port",
+            "vpn_connection",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_vpn_connection(self, obj: Router) -> dict:
+        vpn_cache = self.context.get("vpn_connections_map")
+        if vpn_cache is not None and obj.id in vpn_cache:
+            info = vpn_cache[obj.id]
+        else:
+            info = obj.vpn_connection_info
+
+        return {
+            "status": info.get("status", "NEVER_CONNECTED"),
+            "is_connected": info.get("is_connected", False),
+            "connected_at": info.get("connected_at"),
+            "last_seen": info.get("last_seen"),
+        }
 
 
 class RouterWriteSerializer(serializers.ModelSerializer):
@@ -53,6 +163,46 @@ class RouterWriteSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "api_password": {"write_only": True},
         }
+
+
+class RouterCreateSerializer(serializers.ModelSerializer):
+    """
+    Client registration serializer.
+
+    Only accepts name and description from the client.
+    Host, port, credentials, and RouterOS version are provisioned
+    automatically by backend services.
+    """
+
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text=_("Optional router description."),
+    )
+
+    class Meta:
+        model = Router
+        fields = ["id", "name", "description"]
+        read_only_fields = ["id"]
+
+
+class GenerateVpnTokenSerializer(serializers.Serializer):
+    """Input serializer for generating an automated IKEv2 VPN client provisioning token."""
+
+    expiration_minutes = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=60,
+        default=10,
+        help_text=_("Token expiration in minutes (default 10)."),
+    )
+    filename = serializers.CharField(
+        required=False,
+        default="vpn_setup.rsc",
+        max_length=100,
+        help_text=_("Destination filename on the MikroTik router."),
+    )
 
 
 # ---------------------------------------------------------------------------

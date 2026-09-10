@@ -10,7 +10,9 @@ from datetime import timedelta
 from typing import Any
 
 from django.conf import settings
+from django.db import transaction
 from django.urls import reverse
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -27,7 +29,7 @@ from apps.scripts.serializers import (
     ScriptDownloadTokenResponseSerializer,
 )
 from core.mixins import ActionPermissionsMixin, StandardResponseMixin
-from core.responses import created_response, no_content_response, success_response
+from core.responses import created_response, error_response, no_content_response, success_response
 
 from services.mikrotik.client import MikroTikClient
 from services.mikrotik.router import RouterService
@@ -35,10 +37,19 @@ from services.mikrotik.router import RouterService
 from .models import Router, UserRouter
 from .permissions import IsAdminOrReadOwner, IsRouterMember, IsRouterOwner
 from .serializers import (
+    GenerateVpnTokenSerializer,
+    RouterCreateSerializer,
+    RouterListSerializer,
     RouterSerializer,
     RouterWriteSerializer,
     UserRouterSerializer,
     UserRouterWriteSerializer,
+)
+from .services import (
+    generate_router_vpn_provisioning_token,
+    get_batch_routers_vpn_connection_info,
+    provision_router_defaults,
+    sync_router_radius_user,
 )
 
 
@@ -56,6 +67,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
     resource:                 GET  /api/routers/{id}/resource/
     interfaces:               GET  /api/routers/{id}/interfaces/
     generate_bootstrap_token: POST /api/routers/{id}/generate-bootstrap-token/
+    generate_vpn_token:       POST /api/routers/{id}/generate-vpn-token/
 
     Access policy
     -------------
@@ -64,7 +76,8 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
       resource / interfaces   → IsRouterMember (owner OR viewer)
     - update / partial_update
       / destroy /
-      generate_bootstrap_token → IsRouterOwner (owner only)
+      generate_bootstrap_token /
+      generate_vpn_token      → IsRouterOwner (owner only)
     """
 
     permission_classes = [IsAuthenticated]
@@ -79,34 +92,69 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
         "partial_update": [IsRouterOwner],
         "destroy": [IsRouterOwner],
         "generate_bootstrap_token": [IsRouterOwner],
+        "generate_vpn_token": [IsRouterOwner],
     }
 
     def get_queryset(self):
         """
-        Staff users see all routers.
-        Regular users see only the routers they have any role on.
+        Staff users see all active routers (or all if include_inactive=true).
+        Regular users see only active routers they have any role on.
         """
         user = self.request.user
+        base_qs = Router.objects.all()
+        if not getattr(user, "is_staff", False) or not self.request.query_params.get(
+            "include_inactive"
+        ):
+            base_qs = base_qs.filter(is_active=True)
+
         if getattr(user, "is_staff", False):
-            return Router.objects.all()
+            return base_qs
         owned_router_ids = UserRouter.objects.filter(user=user).values_list(
             "router_id", flat=True
         )
-        return Router.objects.filter(pk__in=owned_router_ids)
+        return base_qs.filter(pk__in=owned_router_ids)
 
     def get_serializer_class(self):
-        if self.action in ["create", "update", "partial_update"]:
+        if self.action == "create":
+            return RouterCreateSerializer
+        if self.action == "list":
+            return RouterListSerializer
+        if self.action in ["update", "partial_update"]:
             return RouterWriteSerializer
         return RouterSerializer
 
+    def list(self, request: Request, *args, **kwargs) -> Response:
+        """List routers accessible to the user, batch-populating VPN connection status."""
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            vpn_map = get_batch_routers_vpn_connection_info(list(page))
+            context = {**self.get_serializer_context(), "vpn_connections_map": vpn_map}
+            serializer = self.get_serializer(page, many=True, context=context)
+            return self.get_paginated_response(serializer.data)
+
+        router_list = list(queryset)
+        vpn_map = get_batch_routers_vpn_connection_info(router_list)
+        context = {**self.get_serializer_context(), "vpn_connections_map": vpn_map}
+        serializer = self.get_serializer(router_list, many=True, context=context)
+        return Response(serializer.data)
+
+    @transaction.atomic
     def perform_create(self, serializer: BaseSerializer[Any]) -> None:
-        """Create the router and automatically assign creator as OWNER."""
-        router = serializer.save()
+        """Create the router with dynamic credentials/port, assign creator as OWNER, and register RADIUS user."""
+        defaults = provision_router_defaults()
+        router = serializer.save(**defaults)
         UserRouter.objects.create(
             user=self.request.user,
             router=router,
             role=UserRouter.RouterRole.OWNER,
         )
+        sync_router_radius_user(router)
+
+    def perform_destroy(self, instance: Router) -> None:
+        """Perform logical deletion on router (is_active=False) and revoke RADIUS credentials."""
+        instance.soft_delete()
 
     def _get_service(self, router: Router) -> RouterService:
         """Build a RouterService for the given router instance."""
@@ -114,7 +162,7 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
             host=router.host,
             username=router.api_username,
             password=router.api_password,
-            port=router.port,
+            port=router.api_port or router.port,
             ssl_verify=router.ssl_verify,
         )
         return RouterService(client)
@@ -201,6 +249,45 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
             }
         )
 
+    @extend_schema(
+        request=GenerateVpnTokenSerializer,
+        responses={201: ScriptDownloadTokenResponseSerializer},
+        tags=["routers"],
+        summary="Generate an automated IKEv2 VPN client provisioning token",
+        description=(
+            "Generates a single-use token and RouterOS command to provision IKEv2 VPN on "
+            "the router, dynamically binding to the first active VPN node and router credentials."
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="generate-vpn-token")
+    def generate_vpn_token(self, request: Request, pk: int | None = None) -> Response:
+        """
+        Generate a single-use download token to configure IKEv2 VPN client on the router.
+        """
+        router = self.get_object()
+        serializer = GenerateVpnTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+        expiration_minutes = data.get("expiration_minutes")
+        filename = data.get("filename", "vpn_setup.rsc")
+
+        try:
+            result = generate_router_vpn_provisioning_token(
+                router=router,
+                request=request,
+                expiration_minutes=expiration_minutes,
+                filename=filename,
+            )
+            return created_response(result)
+        except ValidationError as exc:
+            detail_msg = exc.message if hasattr(exc, "message") else str(exc)
+            return error_response(
+                detail=detail_msg,
+                code="vpn_provisioning_error",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
 
 class UserRouterViewSet(ActionPermissionsMixin, GenericViewSet):
     """
@@ -232,12 +319,14 @@ class UserRouterViewSet(ActionPermissionsMixin, GenericViewSet):
     def get_queryset(self):
         """
         Staff sees all memberships.
-        Regular users see only their own memberships.
+        Regular users see only memberships for active routers.
         """
         user = self.request.user
         if getattr(user, "is_staff", False):
             return UserRouter.objects.select_related("user", "router").all()
-        return UserRouter.objects.select_related("user", "router").filter(user=user)
+        return UserRouter.objects.select_related("user", "router").filter(
+            user=user, router__is_active=True
+        )
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:

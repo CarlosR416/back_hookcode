@@ -15,6 +15,10 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: rest_framework
+msgid "This field is required."
+msgstr "Este campo es requerido."
+
 #: apps/hotspot/serializers.py:113
 msgid "Filename must not contain path separators ('/' or '\\')."
 msgstr "El nombre de archivo no debe contener separadores de ruta ('/' o '\\')."
