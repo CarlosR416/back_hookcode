@@ -1,6 +1,6 @@
 Hello {{ user.first_name|default:"there" }},
 
-Thank you for signing up for WiFi Tickets.
+Thank you for signing up for HookCode.
 
 Your 6-digit verification code is: {{ code }}
 
@@ -8,4 +8,5 @@ This code expires in {{ expiration_minutes }} minutes.
 
 If you did not request this verification code, no further action is required.
 
-WiFi Tickets Platform
+HookCode Platform
+
