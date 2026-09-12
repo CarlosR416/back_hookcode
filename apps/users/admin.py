@@ -12,7 +12,7 @@ from .models import EmailVerificationCode, User
 class UserAdmin(BaseUserAdmin):
     """Custom user admin with email as the primary identifier."""
 
-    list_display = ["email", "username", "first_name", "last_name", "is_staff", "is_active"]
+    list_display = ["email", "username", "first_name", "last_name", "is_staff", "is_active", "is_email_verified"]
     search_fields = ["email", "username", "first_name", "last_name"]
     ordering = ["email"]
     fieldsets = (
@@ -23,6 +23,7 @@ class UserAdmin(BaseUserAdmin):
             {
                 "fields": (
                     "is_active",
+                    "is_email_verified",
                     "is_staff",
                     "is_superuser",
                     "groups",

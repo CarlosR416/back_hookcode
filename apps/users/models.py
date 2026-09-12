@@ -15,6 +15,11 @@ class User(AbstractUser):
     """
 
     email = models.EmailField(unique=True, verbose_name="Email address")
+    is_email_verified = models.BooleanField(
+        default=False,
+        verbose_name="Is email verified",
+        help_text="Designates whether this user has verified their email address.",
+    )
 
     # Make email the login field
     USERNAME_FIELD = "email"

@@ -15,13 +15,26 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "username", "first_name", "last_name", "is_active", "date_joined"]
-        read_only_fields = ["id", "date_joined"]
+        fields = [
+            "id",
+            "email",
+            "username",
+            "first_name",
+            "last_name",
+            "is_active",
+            "is_email_verified",
+            "date_joined",
+        ]
+        read_only_fields = ["id", "date_joined", "is_email_verified"]
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     """Write serializer for new user registration."""
 
+    email = serializers.EmailField(
+        required=True,
+        help_text=_("Email address of the user."),
+    )
     first_name = serializers.CharField(
         required=True,
         max_length=150,
@@ -39,6 +52,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ["email", "first_name", "last_name", "password", "password_confirm"]
 
+    def validate_email(self, value: str) -> str:
+        value = value.lower().strip()
+        existing_user = User.objects.filter(email__iexact=value).first()
+        if existing_user and existing_user.is_email_verified:
+            raise serializers.ValidationError(_("A user with that email address already exists."))
+        return value
+
     def validate(self, attrs: dict) -> dict:
         if attrs["password"] != attrs.pop("password_confirm"):
             raise serializers.ValidationError({"password_confirm": _("Passwords do not match.")})
@@ -48,9 +68,38 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data: dict) -> User:
         from .emails import generate_and_send_otp
 
-        validated_data["username"] = validated_data["email"][:150]
-        validated_data["is_active"] = False
-        user = User.objects.create_user(**validated_data)
+        email = validated_data["email"].lower().strip()
+        first_name = validated_data["first_name"]
+        last_name = validated_data["last_name"]
+        password = validated_data["password"]
+
+        existing_user = User.objects.filter(email__iexact=email).first()
+
+        if existing_user:
+            if existing_user.is_email_verified:
+                raise serializers.ValidationError(
+                    {"email": _("A user with that email address already exists.")}
+                )
+            # Replace unconfirmed user's data with fresh registration details
+            existing_user.first_name = first_name
+            existing_user.last_name = last_name
+            existing_user.username = email[:150]
+            existing_user.set_password(password)
+            existing_user.is_active = False
+            existing_user.is_email_verified = False
+            existing_user.save()
+            user = existing_user
+        else:
+            user = User.objects.create_user(
+                email=email,
+                username=email[:150],
+                first_name=first_name,
+                last_name=last_name,
+                password=password,
+                is_active=False,
+                is_email_verified=False,
+            )
+
         try:
             generate_and_send_otp(user)
         except Exception as exc:
