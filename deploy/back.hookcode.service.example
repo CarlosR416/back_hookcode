@@ -1,0 +1,45 @@
+# ==============================================================================
+# Example Systemd Service Unit Template (Reference Only)
+# ==============================================================================
+# NOTE: This file is an illustrative EXAMPLE ONLY and must NOT be used directly.
+# Customize all placeholders (<APP_USER>, <APP_GROUP>, <PROJECT_DIR>, etc.)
+# for your specific server environment when configuring your service.
+#
+# Typical usage:
+#   sudo cp deploy/back.hookcode.service.example /etc/systemd/system/<SERVICE_NAME>.service
+#   sudo nano /etc/systemd/system/<SERVICE_NAME>.service
+# ==============================================================================
+
+[Unit]
+Description=Backend API Service (<SERVICE_DESCRIPTION>)
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# System user and group executing the process
+User=<APP_USER>
+Group=<APP_GROUP>
+
+# Absolute path to your repository root on the server
+WorkingDirectory=<PROJECT_DIR>
+ExecStart=<PROJECT_DIR>/deploy/start_api.sh
+
+# Environment settings
+# EnvironmentFile=<PROJECT_DIR>/../.env
+Environment=PYTHONUNBUFFERED=1
+Environment=DJANGO_SETTINGS_MODULE=config.settings.production
+
+# Process lifecycle and restart policy
+Restart=always
+RestartSec=3
+KillMode=mixed
+TimeoutStopSec=20
+
+# Sandboxing and resource limits
+LimitNOFILE=65535
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
