@@ -78,6 +78,7 @@ class EmailVerificationOTPTests(APITestCase):
 
         user.refresh_from_db()
         self.assertTrue(user.is_active)
+        self.assertTrue(user.is_email_verified)
 
         otp.refresh_from_db()
         self.assertTrue(otp.is_used)
@@ -171,18 +172,33 @@ class EmailVerificationOTPTests(APITestCase):
         self.assertEqual(response.data.get("error", {}).get("code"), "user_not_found")
 
     def test_verify_otp_already_verified_user(self):
-        """Attempting to verify an already active user returns 400 already_verified."""
+        """Attempting to verify an already verified user returns 400 already_verified."""
         user = User.objects.create_user(
             username="alreadyactive@example.com",
             email="alreadyactive@example.com",
             password="Password123!",
             is_active=True,
+            is_email_verified=True,
         )
         payload = {
             "email": "alreadyactive@example.com",
             "otp": "123456",
         }
         response = self.client.post(self.verify_otp_url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data.get("error", {}).get("code"), "already_verified")
+
+    def test_resend_otp_already_verified_user(self):
+        """Requesting resend for an already verified user returns 400 already_verified."""
+        User.objects.create_user(
+            username="verifiedresend@example.com",
+            email="verifiedresend@example.com",
+            password="Password123!",
+            is_active=True,
+            is_email_verified=True,
+        )
+        payload = {"email": "verifiedresend@example.com"}
+        response = self.client.post(self.resend_otp_url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data.get("error", {}).get("code"), "already_verified")
 

@@ -59,11 +59,12 @@ class UserRegistrationTests(APITestCase):
         self.assertIn("password", response.data["error"])
 
     def test_registration_duplicate_email(self):
-        """Fails when an email is already registered."""
+        """Fails when an email is already registered and verified."""
         User.objects.create_user(
             username="existing@example.com",
             email="existing@example.com",
             password="Password123!",
+            is_email_verified=True,
         )
         payload = {
             "email": "existing@example.com",
@@ -76,3 +77,31 @@ class UserRegistrationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
         self.assertIn("email", response.data["error"])
+
+    def test_registration_unverified_email_replaces_info_and_succeeds(self):
+        """When an email was registered but never verified, re-registering replaces info and succeeds with 201."""
+        User.objects.create_user(
+            username="unverified@example.com",
+            email="unverified@example.com",
+            first_name="OldName",
+            last_name="OldLastName",
+            password="OldPassword123!",
+            is_active=False,
+            is_email_verified=False,
+        )
+        payload = {
+            "email": "unverified@example.com",
+            "first_name": "NewName",
+            "last_name": "NewLastName",
+            "password": "NewPassword123!",
+            "password_confirm": "NewPassword123!",
+        }
+        response = self.client.post(self.register_url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        user = User.objects.get(email="unverified@example.com")
+        self.assertEqual(user.first_name, "NewName")
+        self.assertEqual(user.last_name, "NewLastName")
+        self.assertTrue(user.check_password("NewPassword123!"))
+        self.assertFalse(user.is_active)
+        self.assertFalse(user.is_email_verified)
