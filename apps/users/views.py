@@ -108,9 +108,9 @@ class UserViewSet(GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if user.is_active:
+        if user.is_email_verified:
             return error_response(
-                detail=_("This account is already verified and active."),
+                detail=_("This account's email is already verified."),
                 code="already_verified",
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -151,8 +151,9 @@ class UserViewSet(GenericViewSet):
         otp_record.is_used = True
         otp_record.save(update_fields=["is_used"])
 
+        user.is_email_verified = True
         user.is_active = True
-        user.save(update_fields=["is_active"])
+        user.save(update_fields=["is_email_verified", "is_active"])
 
         refresh = RefreshToken.for_user(user)
 
@@ -186,9 +187,9 @@ class UserViewSet(GenericViewSet):
                 {"detail": _("If an unverified account exists, a new verification code has been sent.")}
             )
 
-        if user.is_active:
+        if user.is_email_verified:
             return error_response(
-                detail=_("This account is already verified and active."),
+                detail=_("This account's email is already verified."),
                 code="already_verified",
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -278,8 +279,14 @@ class UserViewSet(GenericViewSet):
         if created:
             if uid:
                 user.username = uid
+            user.is_email_verified = True
+            user.is_active = True
             user.set_unusable_password()
             user.save()
+        elif not user.is_email_verified:
+            user.is_email_verified = True
+            user.is_active = True
+            user.save(update_fields=["is_email_verified", "is_active"])
 
         refresh = RefreshToken.for_user(user)
 
