@@ -84,6 +84,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # ── Database ────────────────────────────────────────────────────────────────────
+DB_CONN_MAX_AGE = config("DB_CONN_MAX_AGE", default=60, cast=int)
+
 DATABASES = {
     "default": {
         "ENGINE": config("DB_ENGINE", default="django.db.backends.postgresql"),
@@ -92,6 +94,7 @@ DATABASES = {
         "PASSWORD": config("DB_PASSWORD", default="wifitickets_pass"),
         "HOST": config("DB_HOST", default="localhost"),
         "PORT": config("DB_PORT", default="5432"),
+        "CONN_MAX_AGE": DB_CONN_MAX_AGE,
     },
     "radius": {
         "ENGINE": config("RADIUS_DB_ENGINE", default=config("DB_ENGINE", default="django.db.backends.postgresql")),
@@ -100,6 +103,7 @@ DATABASES = {
         "PASSWORD": config("RADIUS_DB_PASSWORD", default=config("DB_PASSWORD", default="wifitickets_pass")),
         "HOST": config("RADIUS_DB_HOST", default=config("DB_HOST", default="localhost")),
         "PORT": config("RADIUS_DB_PORT", default=config("DB_PORT", default="5432")),
+        "CONN_MAX_AGE": DB_CONN_MAX_AGE,
     },
 }
 
@@ -183,10 +187,15 @@ SIMPLE_JWT = {
 }
 
 
-# ── CORS ────────────────────────────────────────────────────────────────────────
+# ── CORS & CSRF ──────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
     default="http://localhost:3000",
+    cast=Csv(),
+)
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS",
+    default="",
     cast=Csv(),
 )
 
