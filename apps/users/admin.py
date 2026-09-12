@@ -5,7 +5,7 @@ Admin registration for the users application.
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import EmailVerificationCode, User
+from .models import EmailVerificationCode, PasswordResetCode, User
 
 
 @admin.register(User)
@@ -52,3 +52,14 @@ class EmailVerificationCodeAdmin(admin.ModelAdmin):
     list_filter = ["is_used", "created_at"]
     search_fields = ["user__email", "code"]
     readonly_fields = ["created_at"]
+
+
+@admin.register(PasswordResetCode)
+class PasswordResetCodeAdmin(admin.ModelAdmin):
+    """Admin inspection for OTP password reset codes."""
+
+    list_display = ["user", "code", "created_at", "expires_at", "attempts", "is_used"]
+    list_filter = ["is_used", "created_at"]
+    search_fields = ["user__email", "code"]
+    readonly_fields = ["created_at"]
+

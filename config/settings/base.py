@@ -230,7 +230,7 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=False, cast=bool)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="WiFi Tickets <noreply@wifitickets.com>")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="HookCode <noreply@hookcode.online>")
 EMAIL_OTP_EXPIRATION_MINUTES = config("EMAIL_OTP_EXPIRATION_MINUTES", default=5, cast=int)
 EMAIL_OTP_RESEND_COOLDOWN_SECONDS = config("EMAIL_OTP_RESEND_COOLDOWN_SECONDS", default=60, cast=int)
 

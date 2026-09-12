@@ -164,3 +164,57 @@ class GoogleLoginSerializer(serializers.Serializer):
     def validate_firebase_token(self, value):
         from .firebase import verify_google_token
         return verify_google_token(value)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Serializer for requesting a password reset OTP."""
+
+    email = serializers.EmailField(
+        required=True,
+        help_text=_("The email address of the account requesting password reset."),
+    )
+
+    def validate_email(self, value: str) -> str:
+        return value.lower().strip()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Serializer for verifying OTP and setting a new password."""
+
+    email = serializers.EmailField(
+        required=True,
+        help_text=_("The email address of the account."),
+    )
+    otp = serializers.CharField(
+        required=True,
+        min_length=6,
+        max_length=6,
+        help_text=_("The 6-digit numeric OTP code received via email."),
+    )
+    password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        help_text=_("The new password (minimum 8 characters)."),
+    )
+    password_confirm = serializers.CharField(
+        write_only=True,
+        help_text=_("Confirmation of the new password."),
+    )
+
+    def validate_email(self, value: str) -> str:
+        return value.lower().strip()
+
+    def validate_otp(self, value: str) -> str:
+        if not value.isdigit():
+            raise serializers.ValidationError(_("The OTP code must contain only digits."))
+        return value
+
+    def validate(self, attrs: dict) -> dict:
+        if attrs["password"] != attrs["password_confirm"]:
+            raise serializers.ValidationError(
+                {"password_confirm": _("Passwords do not match.")}
+            )
+        from django.contrib.auth.password_validation import validate_password
+        validate_password(attrs["password"])
+        return attrs
+
