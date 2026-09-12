@@ -18,10 +18,12 @@ from drf_spectacular.utils import extend_schema
 
 from core.responses import created_response, error_response, success_response
 
-from .models import EmailVerificationCode
+from .models import EmailVerificationCode, PasswordResetCode
 from .serializers import (
     ChangePasswordSerializer,
     GoogleLoginSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
     RegisterSerializer,
     ResendOTPSerializer,
     UserSerializer,
@@ -36,14 +38,17 @@ class UserViewSet(GenericViewSet):
     ViewSet for user account management.
 
     Endpoints:
-        POST   /api/auth/register/            — public, create unverified account
-        POST   /api/auth/verify-otp/          — public, verify email with 6-digit OTP
-        POST   /api/auth/resend-otp/          — public, resend OTP code
-        GET    /api/auth/me/                  — return own profile
-        PUT    /api/auth/me/                  — update own profile
-        POST   /api/auth/me/change-password/  — change password
-        POST   /api/auth/google/              — Google Sign-in / Firebase
+        POST   /api/auth/register/                — public, create unverified account
+        POST   /api/auth/verify-otp/              — public, verify email with 6-digit OTP
+        POST   /api/auth/resend-otp/              — public, resend OTP code
+        POST   /api/auth/password-reset/request/  — public, request password reset OTP
+        POST   /api/auth/password-reset/confirm/  — public, verify OTP and set new password
+        GET    /api/auth/me/                      — return own profile
+        PUT    /api/auth/me/                      — update own profile
+        POST   /api/auth/me/change-password/      — change password
+        POST   /api/auth/google/                  — Google Sign-in / Firebase
     """
+
 
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
@@ -218,6 +223,146 @@ class UserViewSet(GenericViewSet):
 
         return success_response(
             {"detail": _("A new verification code has been sent to your email.")}
+        )
+
+    @extend_schema(
+        request=PasswordResetRequestSerializer,
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["auth"],
+    )
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="password-reset/request",
+        permission_classes=[AllowAny],
+    )
+    def password_reset_request(self, request: Request) -> Response:
+        """
+        Request a password reset OTP code.
+        Returns a generic response to prevent email enumeration.
+        """
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return success_response(
+                {
+                    "detail": _(
+                        "If an account with that email exists, a password reset code has been sent."
+                    )
+                }
+            )
+
+        # Enforce cooldown to protect Brevo SMTP quota
+        cooldown_seconds = getattr(settings, "EMAIL_OTP_RESEND_COOLDOWN_SECONDS", 60)
+        latest_code = (
+            PasswordResetCode.objects.filter(user=user)
+            .order_by("-created_at")
+            .first()
+        )
+        if latest_code:
+            time_since_creation = (timezone.now() - latest_code.created_at).total_seconds()
+            if time_since_creation < cooldown_seconds:
+                remaining_wait = int(cooldown_seconds - time_since_creation)
+                return error_response(
+                    detail=_(
+                        "Please wait %(seconds)d seconds before requesting another reset code."
+                    )
+                    % {"seconds": remaining_wait},
+                    code="resend_cooldown",
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
+
+        from .emails import generate_and_send_password_reset_otp
+
+        generate_and_send_password_reset_otp(user)
+
+        return success_response(
+            {
+                "detail": _(
+                    "If an account with that email exists, a password reset code has been sent."
+                )
+            }
+        )
+
+    @extend_schema(
+        request=PasswordResetConfirmSerializer,
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["auth"],
+    )
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="password-reset/confirm",
+        permission_classes=[AllowAny],
+    )
+    def password_reset_confirm(self, request: Request) -> Response:
+        """
+        Verify the OTP and reset the user's password.
+        """
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        otp = serializer.validated_data["otp"]
+        password = serializer.validated_data["password"]
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return error_response(
+                detail=_("No account found with the provided email address."),
+                code="user_not_found",
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Retrieve the latest active password reset code
+        otp_record = (
+            PasswordResetCode.objects.filter(user=user, is_used=False)
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not otp_record or otp_record.is_expired():
+            return error_response(
+                detail=_("The reset code has expired. Please request a new one."),
+                code="expired_otp",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not otp_record.can_attempt():
+            return error_response(
+                detail=_("Maximum reset attempts exceeded. Please request a new code."),
+                code="too_many_attempts",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if otp_record.code != otp:
+            otp_record.attempts += 1
+            otp_record.save(update_fields=["attempts"])
+            remaining = max(0, 5 - otp_record.attempts)
+            return error_response(
+                detail=_("Invalid reset code. %(remaining)d attempts remaining.")
+                % {"remaining": remaining},
+                code="invalid_otp",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # OTP is valid: mark code as used and update user's password
+        otp_record.is_used = True
+        otp_record.save(update_fields=["is_used"])
+
+        user.set_password(password)
+        user.is_email_verified = True
+        user.is_active = True
+        user.save(update_fields=["password", "is_email_verified", "is_active"])
+
+        return success_response(
+            {"detail": _("Password has been reset successfully.")}
         )
 
     @action(detail=False, methods=["get", "put", "patch"], url_path="me")
