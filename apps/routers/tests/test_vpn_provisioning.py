@@ -82,45 +82,14 @@ class RouterVpnProvisioningTests(APITestCase):
         )
 
         # Ensure the seeded template exists in the test DB
+        import importlib
+        migration_0003 = importlib.import_module("apps.scripts.migrations.0003_seed_ikev2_vpn_template")
+
         self.template, _ = ScriptTemplate.objects.get_or_create(
-            name="MikroTik IKEv2 VPN Client",
+            name=migration_0003.IKEV2_TEMPLATE_NAME,
             defaults={
-                "description": "IKEv2 client provisioning script",
-                "content": (
-                    '# 0. Clean up previous configuration if present (idempotency)\n'
-                    '/ip ipsec identity remove [find comment="codehook-vpn-conect"];\n'
-                    '/ip ipsec peer remove [find name="codehook-vpn-conect"];\n'
-                    '/ip ipsec mode-config remove [find name="codehook-vpn-conect"];\n'
-                    '/ip ipsec proposal remove [find name="codehook-vpn-conect"];\n'
-                    '/ip ipsec profile remove [find name="codehook-vpn-conect"];\n'
-                    '/ip firewall filter remove [find comment="codehook-vpn-conect"];\n'
-                    '/certificate remove [find name~"IKEv2-cert"];\n\n'
-                    '# 1. Download and import VPN server certificate\n'
-                    '/tool fetch url="{{ cert_download_url }}" mode=https dst-path="IKEv2-cert.pem";\n'
-                    ':delay 2s;\n'
-                    '/certificate import file-name=IKEv2-cert.pem passphrase="";\n'
-                    ':delay 1s;\n\n'
-                    '# 2. IPsec Profile\n'
-                    '/ip ipsec profile\n'
-                    'add name=codehook-vpn-conect dh-group=ecp256,modp2048 enc-algorithm=aes-256 hash-algorithm=sha256 comment="codehook-vpn-conect"\n\n'
-                    '# 3. IPsec Proposal\n'
-                    '/ip ipsec proposal\n'
-                    'add name=codehook-vpn-conect auth-algorithms=sha256 enc-algorithms=aes-256-cbc pfs-group=none comment="codehook-vpn-conect"\n\n'
-                    '# 4. IPsec Peer\n'
-                    '/ip ipsec peer\n'
-                    'add name=codehook-vpn-conect address={{ vpn_server_address }} profile=codehook-vpn-conect exchange-mode=ike2 comment="codehook-vpn-conect"\n\n'
-                    '# 5. IPsec Mode Config\n'
-                    '/ip ipsec mode-config\n'
-                    'add name=codehook-vpn-conect responder=no comment="codehook-vpn-conect"\n\n'
-                    '# 6. IPsec Identity (Dynamic RADIUS credentials)\n'
-                    '/ip ipsec identity\n'
-                    'add peer=codehook-vpn-conect auth-method=eap certificate="IKEv2-cert.pem_0" \\\n'
-                    '    eap-methods=eap-mschapv2 username="{{ radius_username }}" password="{{ radius_password }}" \\\n'
-                    '    generate-policy=port-strict mode-config=codehook-vpn-conect comment="codehook-vpn-conect"\n\n'
-                    '# 7. Firewall filter rule (placed first in the input chain)\n'
-                    '/ip firewall filter\n'
-                    'add chain=input src-address={{ vpn_server_internal_ip }} action=accept comment="codehook-vpn-conect" place-before=0\n'
-                ),
+                "description": migration_0003.IKEV2_TEMPLATE_DESC,
+                "content": migration_0003.IKEV2_TEMPLATE_CONTENT,
             },
         )
 
@@ -171,6 +140,7 @@ class RouterVpnProvisioningTests(APITestCase):
         self.assertIn('/ip ipsec proposal remove [find name="codehook-vpn-conect"];', content)
         self.assertIn('/ip ipsec profile remove [find name="codehook-vpn-conect"];', content)
         self.assertIn('/ip firewall filter remove [find comment="codehook-vpn-conect"];', content)
+        self.assertIn('/ip firewall filter remove [find comment="codehook-vpn-block-internet"];', content)
 
         # Certificate download & import
         expected_cert_url = f"/api/vpn/nodes/{self.vpn_node.pk}/certificate/?raw=true"
@@ -180,15 +150,18 @@ class RouterVpnProvisioningTests(APITestCase):
         # Peer configuration with VPN server host and codehook-vpn-conect name
         self.assertIn(f"address={self.vpn_node.host}", content)
         self.assertIn("add name=codehook-vpn-conect", content)
-        self.assertIn('comment="codehook-vpn-conect"', content)
+
+        # Mode config with DNS responder disabled
+        self.assertIn("add name=codehook-vpn-conect responder=no use-responder-dns=no;", content)
 
         # Identity configuration with FreeRADIUS username, password and codehook-vpn-conect peer
         self.assertIn(f'username="{self.router.api_username}"', content)
         self.assertIn(f'password="{self.radius_creds["password"]}"', content)
         self.assertIn('add peer=codehook-vpn-conect', content)
 
-        # Firewall rule placed first with stripped internal IP and comment
-        self.assertIn("src-address=10.8.0.1 action=accept comment=\"codehook-vpn-conect\" place-before=0", content)
+        # Firewall rules: accept management from internal IP, drop forward internet over VPN
+        self.assertIn("src-address=10.8.0.1 action=accept comment=\"codehook-vpn-conect\" place-before=0;", content)
+        self.assertIn('add chain=forward ipsec-policy=out,ipsec action=drop comment="codehook-vpn-block-internet" place-before=0;', content)
 
         # Self-cleanup
         self.assertIn('/file remove [find name="vpn_custom.rsc"];', content)

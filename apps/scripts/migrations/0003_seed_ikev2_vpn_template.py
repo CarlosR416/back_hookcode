@@ -14,6 +14,7 @@ IKEV2_TEMPLATE_CONTENT = """# 0. Clean up previous configuration if present (ide
 /ip ipsec proposal remove [find name="codehook-vpn-conect"];
 /ip ipsec profile remove [find name="codehook-vpn-conect"];
 /ip firewall filter remove [find comment="codehook-vpn-conect"];
+/ip firewall filter remove [find comment="codehook-vpn-block-internet"];
 /certificate remove [find name~"IKEv2-cert"];
 
 # 1. Download and import VPN server certificate
@@ -24,29 +25,30 @@ IKEV2_TEMPLATE_CONTENT = """# 0. Clean up previous configuration if present (ide
 
 # 2. IPsec Profile
 /ip ipsec profile
-add name=codehook-vpn-conect dh-group=ecp256,modp2048 enc-algorithm=aes-256 hash-algorithm=sha256 comment="codehook-vpn-conect"
+add name=codehook-vpn-conect dh-group=ecp256,modp2048 enc-algorithm=aes-256 hash-algorithm=sha256;
 
 # 3. IPsec Proposal
 /ip ipsec proposal
-add name=codehook-vpn-conect auth-algorithms=sha256 enc-algorithms=aes-256-cbc pfs-group=none comment="codehook-vpn-conect"
+add name=codehook-vpn-conect auth-algorithms=sha256 enc-algorithms=aes-256-cbc pfs-group=none;
 
 # 4. IPsec Peer
 /ip ipsec peer
-add name=codehook-vpn-conect address={{ vpn_server_address }} profile=codehook-vpn-conect exchange-mode=ike2 comment="codehook-vpn-conect"
+add name=codehook-vpn-conect address={{ vpn_server_address }} profile=codehook-vpn-conect exchange-mode=ike2;
 
-# 5. IPsec Mode Config
+# 5. IPsec Mode Config (disable responder DNS to prevent routing/DNS hijack)
 /ip ipsec mode-config
-add name=codehook-vpn-conect responder=no comment="codehook-vpn-conect"
+add name=codehook-vpn-conect responder=no use-responder-dns=no;
 
 # 6. IPsec Identity (Dynamic RADIUS credentials)
 /ip ipsec identity
 add peer=codehook-vpn-conect auth-method=eap certificate="IKEv2-cert.pem_0" \\
     eap-methods=eap-mschapv2 username="{{ radius_username }}" password="{{ radius_password }}" \\
-    generate-policy=port-strict mode-config=codehook-vpn-conect comment="codehook-vpn-conect"
+    generate-policy=port-strict mode-config=codehook-vpn-conect comment="codehook-vpn-conect";
 
-# 7. Firewall filter rule (placed first in the input chain)
+# 7. Firewall filter rules (allow management input, block internet forwarding over VPN)
 /ip firewall filter
-add chain=input src-address={{ vpn_server_internal_ip }} action=accept comment="codehook-vpn-conect" place-before=0
+add chain=input src-address={{ vpn_server_internal_ip }} action=accept comment="codehook-vpn-conect" place-before=0;
+add chain=forward ipsec-policy=out,ipsec action=drop comment="codehook-vpn-block-internet" place-before=0;
 """
 
 
