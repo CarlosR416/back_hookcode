@@ -126,3 +126,66 @@ class RouterI18nTests(APITestCase):
             response.data.get("error", {}).get("detail"),
             "You must be the owner of this router to perform this action.",
         )
+
+    def test_router_limit_reached_in_spanish(self):
+        """Router plan limit error should be translated to Spanish."""
+        for i in range(1, 4):
+            r = Router.objects.create(
+                name=f"Router {i}",
+                host=f"10.0.0.{i}",
+                port=10000 + i,
+                api_username=f"U1000{i}",
+                api_password="pwd",
+            )
+            UserRouter.objects.create(
+                user=self.regular_user,
+                router=r,
+                role=UserRouter.RouterRole.OWNER,
+            )
+
+        self.client.force_authenticate(user=self.regular_user)
+        routers_url = reverse("routers:routers-list")
+        response = self.client.post(
+            routers_url,
+            data={"name": "4th Router"},
+            format="json",
+            HTTP_ACCEPT_LANGUAGE="es",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.headers.get("Content-Language"), "es")
+        self.assertEqual(
+            response.data.get("error", {}).get("detail"),
+            "Has alcanzado el límite máximo de 3 routers permitidos para el plan gratuito.",
+        )
+
+    def test_router_limit_reached_in_english(self):
+        """Router plan limit error should be in English."""
+        for i in range(1, 4):
+            r = Router.objects.create(
+                name=f"Router {i}",
+                host=f"10.0.0.{i}",
+                port=10000 + i,
+                api_username=f"U1000{i}",
+                api_password="pwd",
+            )
+            UserRouter.objects.create(
+                user=self.regular_user,
+                router=r,
+                role=UserRouter.RouterRole.OWNER,
+            )
+
+        self.client.force_authenticate(user=self.regular_user)
+        routers_url = reverse("routers:routers-list")
+        response = self.client.post(
+            routers_url,
+            data={"name": "4th Router"},
+            format="json",
+            HTTP_ACCEPT_LANGUAGE="en",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.headers.get("Content-Language"), "en")
+        self.assertEqual(
+            response.data.get("error", {}).get("detail"),
+            "You have reached the maximum limit of 3 routers allowed for the free plan.",
+        )
+

@@ -186,6 +186,19 @@ class RouterCreateSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "description"]
         read_only_fields = ["id"]
 
+    def validate(self, attrs: dict) -> dict:
+        request = self.context.get("request")
+        if request and hasattr(request, "user") and request.user.is_authenticated:
+            user = request.user
+            if not getattr(user, "can_add_router", True):
+                raise serializers.ValidationError(
+                    _(
+                        "You have reached the maximum limit of %(limit)d routers allowed for the free plan."
+                    )
+                    % {"limit": getattr(user, "max_routers", 3)}
+                )
+        return attrs
+
 
 class GenerateVpnTokenSerializer(serializers.Serializer):
     """Input serializer for generating an automated IKEv2 VPN client provisioning token."""

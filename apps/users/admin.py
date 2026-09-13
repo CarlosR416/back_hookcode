@@ -12,12 +12,14 @@ from .models import EmailVerificationCode, PasswordResetCode, User
 class UserAdmin(BaseUserAdmin):
     """Custom user admin with email as the primary identifier."""
 
-    list_display = ["email", "username", "first_name", "last_name", "is_staff", "is_active", "is_email_verified"]
+    list_display = ["email", "username", "plan", "first_name", "last_name", "is_staff", "is_active", "is_email_verified"]
+    list_filter = ["plan", "is_staff", "is_active", "is_email_verified"]
     search_fields = ["email", "username", "first_name", "last_name"]
     ordering = ["email"]
     fieldsets = (
         (None, {"fields": ("email", "username", "password")}),
         ("Personal info", {"fields": ("first_name", "last_name")}),
+        ("Subscription Plan", {"fields": ("plan",)}),
         (
             "Permissions",
             {
@@ -38,7 +40,7 @@ class UserAdmin(BaseUserAdmin):
             None,
             {
                 "classes": ("wide",),
-                "fields": ("email", "username", "password1", "password2"),
+                "fields": ("email", "username", "plan", "password1", "password2"),
             },
         ),
     )

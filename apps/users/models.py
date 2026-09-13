@@ -14,11 +14,22 @@ class User(AbstractUser):
     Uses email as the unique login identifier instead of username.
     """
 
+    class Plan(models.TextChoices):
+        FREE = "free", "Free"
+        PRO = "pro", "Pro"
+
     email = models.EmailField(unique=True, verbose_name="Email address")
     is_email_verified = models.BooleanField(
         default=False,
         verbose_name="Is email verified",
         help_text="Designates whether this user has verified their email address.",
+    )
+    plan = models.CharField(
+        max_length=20,
+        choices=Plan.choices,
+        default=Plan.FREE,
+        verbose_name="Plan",
+        help_text="Designates the subscription plan or tier for this user.",
     )
 
     # Make email the login field
@@ -32,6 +43,34 @@ class User(AbstractUser):
 
     def __str__(self) -> str:
         return self.email
+
+    @property
+    def max_routers(self) -> int | None:
+        """
+        Maximum number of active routers allowed for this user under their current plan.
+        Returns None if unlimited (e.g. Pro tier, staff, or superusers).
+        """
+        if self.is_staff or self.is_superuser:
+            return None
+        if self.plan == self.Plan.FREE:
+            return 3
+        return None
+
+    @property
+    def owned_routers_count(self) -> int:
+        """Count of active routers owned by this user."""
+        return self.user_routers.filter(
+            role="owner",
+            router__is_active=True,
+        ).count()
+
+    @property
+    def can_add_router(self) -> bool:
+        """Check whether the user is eligible to add another router under their current plan."""
+        limit = self.max_routers
+        if limit is None:
+            return True
+        return self.owned_routers_count < limit
 
 
 class EmailVerificationCode(models.Model):
