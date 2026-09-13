@@ -99,6 +99,12 @@ msgstr "Confirmación de la nueva contraseña."
 msgid "The Firebase ID token obtained from Google Sign-In."
 msgstr "El token de ID de Firebase obtenido desde el inicio de sesión con Google."
 
+msgid "Free"
+msgstr "Gratuito"
+
+msgid "Pro"
+msgstr "Pro"
+
 #: apps/users/views.py
 #, python-format
 msgid "Account registered. Please enter the 6-digit OTP code sent to %(email)s."
@@ -214,6 +220,11 @@ msgstr "El router no tiene un nombre de usuario API configurado."
 
 msgid "Active VPN node does not have an internal IP configured."
 msgstr "El nodo VPN activo no tiene una IP interna configurada."
+
+#: apps/routers/views.py
+#, python-format
+msgid "You have reached the maximum limit of %(limit)d routers allowed for the free plan."
+msgstr "Has alcanzado el límite máximo de %(limit)d routers permitidos para el plan gratuito."
 
 # ── Apps: Tickets & Scripts ─────────────────────────────────────────────────
 #: apps/tickets/views.py
