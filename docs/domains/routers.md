@@ -80,6 +80,11 @@ Associates a user with a specific router under an assigned permission role:
    - Exposes structured nested object `vpn_connection` in `RouterSerializer` (API representation).
    - Exposes flat properties on the `Router` model (`is_vpn_connected`, `vpn_status`, `vpn_tunnel_ip`) for internal system consumption.
    - Endpoint `GET /api/routers/` uses `RouterListSerializer` with batch prefetching (`get_batch_routers_vpn_connection_info`) to prevent N+1 queries. It strictly omits internal IPs (`host` and `vpn_connection.tunnel_ip`) from the list payload to prevent leakage.
+12. **Free Plan Router Creation Limits:**
+   - Users on the `free` plan can register a maximum of **3 active owned routers** (`role="owner"`, `router.is_active=True`).
+   - Attempting to create a 4th active router returns `HTTP 400 Bad Request` with `code="router_limit_reached"`.
+   - Soft-deleting an existing router (`is_active=False`) frees up a slot.
+   - Users on upgraded plans (`plan="pro"`) or staff members (`is_staff=True`) have no router creation limits.
 
 ---
 
@@ -88,7 +93,7 @@ Associates a user with a specific router under an assigned permission role:
 | Method | Path | Permission | Description |
 |---|---|---|---|
 | `GET` | `/api/routers/` | `IsAuthenticated` | Lists routers accessible to the user with batch-calculated `vpn_connection` status. |
-| `POST` | `/api/routers/` | `IsAuthenticated` | Creates a router with dynamic U10001/port provisioning, assigns creator as `OWNER`, and creates RADIUS user. |
+| `POST` | `/api/routers/` | `IsAuthenticated` | Creates a router with dynamic U10001/port provisioning, assigns creator as `OWNER`, and creates RADIUS user (enforces 3-router limit for free plan). |
 | `GET` | `/api/routers/{id}/` | `IsAuthenticated` | Retrieves router details including `vpn_connection` (requires active membership). |
 | `PUT / PATCH`| `/api/routers/{id}/` | `IsRouterOwner` | Updates router configuration (Owner only). |
 | `DELETE` | `/api/routers/{id}/` | `IsRouterOwner` | Performs logical deletion (soft delete, `is_active=False`) and cleans up RADIUS user credentials (Owner only). |
@@ -107,6 +112,7 @@ Associates a user with a specific router under an assigned permission role:
 | **Provisioning Services** | [apps/routers/tests/test_services.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_services.py) | Sequential identifier allocation starting at `U10001`/`10001`, password uniqueness, and range exhaustion. |
 | **Memberships** | [apps/routers/tests/test_memberships.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_memberships.py) | Successful admin assignment, automatic `CurrentUserDefault()` fallback, duplicate rejection. |
 | **Permissions & RBAC** | [apps/routers/tests/test_permissions.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_permissions.py) | Router creation envelope (only id, name, description), Owner update (`HTTP 200`), Viewer update denial (`HTTP 403`), Owner soft-delete (`HTTP 204`), Viewer delete denial (`HTTP 403`), Non-owner staff delete denial (`HTTP 403`). |
-| **Internationalization** | [apps/routers/tests/test_i18n.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_i18n.py) | Spanish and English assertions for uniqueness validation and owner permission denial messages. |
+| **Plan Limits & Free Mode** | [apps/routers/tests/test_router_limits.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_router_limits.py) | Free user creation up to 3 routers, 4th attempt rejection (`HTTP 400`, `router_limit_reached`), slot freed on soft-deletion, pro/staff exemption, viewer role non-consumption, profile exposure via `/api/auth/me/`, read-only plan protection. |
+| **Internationalization** | [apps/routers/tests/test_i18n.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_i18n.py) | Spanish and English assertions for uniqueness validation, owner permission denial messages, and 3-router plan limit reached errors. |
 | **RADIUS Integration** | [apps/routers/tests/test_radius_integration.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_radius_integration.py) | FreeRADIUS user credential creation on router registration, and complete cleanup on router logical deletion. |
 | **VPN Provisioning & Status** | [apps/routers/tests/test_vpn_provisioning.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/routers/tests/test_vpn_provisioning.py) | Owner token generation, dynamic variable interpolation, token burning, viewer denial, inactive node error, and `radacct` status inspection (`NEVER_CONNECTED`, `CONNECTED`, `DISCONNECTED`, batch list prefetching). |

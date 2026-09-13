@@ -13,6 +13,19 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     """Read serializer — safe fields only, no password returned."""
 
+    max_routers = serializers.IntegerField(
+        read_only=True,
+        help_text=_("Maximum number of active routers allowed for this account (null if unlimited)."),
+    )
+    owned_routers_count = serializers.IntegerField(
+        read_only=True,
+        help_text=_("Current count of active routers owned by this account."),
+    )
+    can_add_router = serializers.BooleanField(
+        read_only=True,
+        help_text=_("Whether the user is eligible to add another router under their current plan."),
+    )
+
     class Meta:
         model = User
         fields = [
@@ -21,11 +34,23 @@ class UserSerializer(serializers.ModelSerializer):
             "username",
             "first_name",
             "last_name",
+            "plan",
+            "max_routers",
+            "owned_routers_count",
+            "can_add_router",
             "is_active",
             "is_email_verified",
             "date_joined",
         ]
-        read_only_fields = ["id", "date_joined", "is_email_verified"]
+        read_only_fields = [
+            "id",
+            "plan",
+            "max_routers",
+            "owned_routers_count",
+            "can_add_router",
+            "date_joined",
+            "is_email_verified",
+        ]
 
 
 class RegisterSerializer(serializers.ModelSerializer):

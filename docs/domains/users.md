@@ -13,6 +13,7 @@ Extends Django's `AbstractUser` with the following customizations:
 * **Primary Identifier:** `email` is unique and designated as `USERNAME_FIELD`.
 * **Admin Compatibility:** `username` is preserved for compatibility with standard tooling and Django Admin.
 * **Email Verification Status:** `is_email_verified` (boolean, defaults to `False`). Discouples email confirmation state from general account enablement (`is_active`), allowing accounts to be suspended or managed by administrators independently of email confirmation.
+* **Subscription Plan:** `plan` (string choices: `free`, `pro`, defaults to `free`). Defines the account tier and router limits. Exposes properties `max_routers`, `owned_routers_count`, and `can_add_router`.
 
 ### Model `EmailVerificationCode` ([apps/users/models.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/users/models.py))
 * **Responsibility:** Stores and tracks 6-digit numeric OTP verification codes sent via email.
@@ -75,6 +76,11 @@ Extends Django's `AbstractUser` with the following customizations:
    - If the user already exists but had `is_email_verified = False`, successful Google authentication marks `is_email_verified = True` and `is_active = True`.
    - If the token lacks an email payload, the request is immediately rejected with code `missing_email` (HTTP 400).
    - In all valid cases, standard JWT keypairs (`access` and `refresh`) are issued.
+9. **Subscription Plans & Tier Limits:**
+   - All accounts default to `plan = "free"`.
+   - Users on the free plan are limited to a maximum of 3 active owned routers (`max_routers = 3`).
+   - The `/api/auth/me/` profile endpoint exposes `plan`, `max_routers`, `owned_routers_count`, and `can_add_router`.
+   - The `plan` field is read-only for clients via the API; plan changes are administered exclusively via Django Admin.
 
 ---
 

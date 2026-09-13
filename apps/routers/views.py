@@ -14,6 +14,7 @@ from django.db import transaction
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
@@ -139,6 +140,20 @@ class RouterViewSet(ActionPermissionsMixin, StandardResponseMixin, ModelViewSet)
         context = {**self.get_serializer_context(), "vpn_connections_map": vpn_map}
         serializer = self.get_serializer(router_list, many=True, context=context)
         return Response(serializer.data)
+
+    def create(self, request: Request, *args, **kwargs) -> Response:
+        """Register a new router if the user has not reached their plan limit."""
+        user = request.user
+        if getattr(user, "is_authenticated", False) and not getattr(user, "can_add_router", True):
+            return error_response(
+                detail=_(
+                    "You have reached the maximum limit of %(limit)d routers allowed for the free plan."
+                )
+                % {"limit": getattr(user, "max_routers", 3)},
+                code="router_limit_reached",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().create(request, *args, **kwargs)
 
     @transaction.atomic
     def perform_create(self, serializer: BaseSerializer[Any]) -> None:
