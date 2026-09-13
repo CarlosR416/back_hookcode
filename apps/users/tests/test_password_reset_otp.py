@@ -194,3 +194,45 @@ class PasswordResetOTPTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("password_confirm", response.data)
+
+    def test_password_reset_request_inactive_user_returns_error_and_blocks(self):
+        """Requesting password reset for an inactive/disabled account is rejected with 400 Bad Request."""
+        self.user.is_active = False
+        self.user.save(update_fields=["is_active"])
+
+        payload = {"email": "resetuser@example.com"}
+        response = self.client.post(self.request_url, data=payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["code"], "account_disabled")
+        self.assertEqual(response.data["detail"], "This account is inactive or disabled.")
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(PasswordResetCode.objects.count(), 0)
+
+    def test_password_reset_confirm_inactive_user_returns_error_and_blocks(self):
+        """Confirming password reset for an inactive/disabled account is rejected and does not activate it."""
+        otp = PasswordResetCode.objects.create(
+            user=self.user,
+            code="123456",
+            expires_at=timezone.now() + timedelta(minutes=15),
+        )
+        self.user.is_active = False
+        self.user.save(update_fields=["is_active"])
+
+        payload = {
+            "email": "resetuser@example.com",
+            "otp": "123456",
+            "password": "NewSecurePassword456!",
+            "password_confirm": "NewSecurePassword456!",
+        }
+        response = self.client.post(self.confirm_url, data=payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["code"], "account_disabled")
+        self.assertEqual(response.data["detail"], "This account is inactive or disabled.")
+
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+        self.assertFalse(self.user.check_password("NewSecurePassword456!"))
+        self.assertTrue(self.user.check_password("OldPassword123!"))
+

@@ -1,12 +1,12 @@
-# WiFi Tickets API Spanish Translation Catalog.
-# Copyright (C) 2026 WiFi Tickets
+# HookCode API Spanish Translation Catalog.
+# Copyright (C) 2026 HookCode
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: WiFi Tickets 1.0\n"
+"Project-Id-Version: HookCode 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-04 01:42+0000\n"
-"PO-Revision-Date: 2026-09-04 01:25+0000\n"
+"POT-Creation-Date: 2026-09-12 21:55+0000\n"
+"PO-Revision-Date: 2026-09-12 21:55+0000\n"
 "Last-Translator: Antigravity\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -15,77 +15,231 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+# ── Django REST Framework & General Validation ─────────────────────────────
 #: rest_framework
 msgid "This field is required."
 msgstr "Este campo es requerido."
 
-#: apps/hotspot/serializers.py:113
-msgid "Filename must not contain path separators ('/' or '\\')."
-msgstr "El nombre de archivo no debe contener separadores de ruta ('/' o '\\')."
+msgid "This field may not be blank."
+msgstr "Este campo no puede estar en blanco."
 
-#: apps/hotspot/views.py:156
-msgid "'router' query param is required."
-msgstr "El parámetro de consulta 'router' es obligatorio."
+msgid "This field may not be null."
+msgstr "Este campo no puede ser nulo."
 
-#: apps/routers/permissions.py:53
+msgid "Enter a valid email address."
+msgstr "Ingresa una dirección de correo electrónico válida."
+
+#, python-format
+msgid "Ensure this field has at least %(limit_value)d characters (it has %(show_value)d)."
+msgstr "Asegúrate de que este campo tenga al menos %(limit_value)d caracteres (tiene %(show_value)d)."
+
+#, python-format
+msgid "Ensure this field has no more than %(limit_value)d characters."
+msgstr "Asegúrate de que este campo no tenga más de %(limit_value)d caracteres."
+
+msgid "No active account found with the given credentials"
+msgstr "No se encontró ninguna cuenta activa con las credenciales proporcionadas."
+
+msgid "Authentication credentials were not provided."
+msgstr "No se proporcionaron las credenciales de autenticación."
+
+msgid "Given token not valid for any token type"
+msgstr "El token proporcionado no es válido para ningún tipo de token."
+
+msgid "Token is invalid or expired"
+msgstr "El token es inválido o ha expirado."
+
+# ── Apps: Users ─────────────────────────────────────────────────────────────
+#: apps/users/serializers.py
+msgid "Email address of the user."
+msgstr "Dirección de correo electrónico del usuario."
+
+msgid "First name of the user."
+msgstr "Nombre del usuario."
+
+msgid "Last name of the user."
+msgstr "Apellido del usuario."
+
+msgid "A user with that email address already exists."
+msgstr "Ya existe un usuario con esa dirección de correo electrónico."
+
+msgid "Passwords do not match."
+msgstr "Las contraseñas no coinciden."
+
+msgid "New passwords do not match."
+msgstr "Las nuevas contraseñas no coinciden."
+
+msgid "Failed to send verification email. Please try again later."
+msgstr "No se pudo enviar el correo de verificación. Por favor intenta más tarde."
+
+msgid "The email address of the account to verify."
+msgstr "La dirección de correo electrónico de la cuenta a verificar."
+
+msgid "The 6-digit numeric OTP code received via email."
+msgstr "El código OTP numérico de 6 dígitos recibido por correo."
+
+msgid "The OTP code must contain only digits."
+msgstr "El código OTP debe contener únicamente dígitos."
+
+msgid "The email address of the account to resend the code to."
+msgstr "El correo electrónico de la cuenta para reenviar el código."
+
+msgid "The email address of the account requesting password reset."
+msgstr "El correo de la cuenta que solicita el restablecimiento de contraseña."
+
+msgid "The email address of the account."
+msgstr "El correo electrónico de la cuenta."
+
+msgid "The new password (minimum 8 characters)."
+msgstr "La nueva contraseña (mínimo 8 caracteres)."
+
+msgid "Confirmation of the new password."
+msgstr "Confirmación de la nueva contraseña."
+
+msgid "The Firebase ID token obtained from Google Sign-In."
+msgstr "El token de ID de Firebase obtenido desde el inicio de sesión con Google."
+
+#: apps/users/views.py
+#, python-format
+msgid "Account registered. Please enter the 6-digit OTP code sent to %(email)s."
+msgstr "Cuenta registrada. Por favor ingresa el código OTP de 6 dígitos enviado a %(email)s."
+
+msgid "No account found with the provided email address."
+msgstr "No se encontró ninguna cuenta con el correo electrónico proporcionado."
+
+msgid "This account's email is already verified."
+msgstr "El correo de esta cuenta ya está verificado."
+
+msgid "This account is inactive or disabled."
+msgstr "Esta cuenta está inactiva o deshabilitada."
+
+msgid "The verification code has expired. Please request a new one."
+msgstr "El código de verificación ha expirado. Por favor solicita uno nuevo."
+
+msgid "Maximum verification attempts exceeded. Please request a new code."
+msgstr "Has superado el número máximo de intentos. Por favor solicita un nuevo código."
+
+#, python-format
+msgid "Invalid verification code. %(remaining)d attempts remaining."
+msgstr "Código de verificación inválido. Te quedan %(remaining)d intentos."
+
+msgid "Email verified successfully."
+msgstr "Correo electrónico verificado exitosamente."
+
+msgid "If an unverified account exists, a new verification code has been sent."
+msgstr "Si existe una cuenta no verificada, se ha enviado un nuevo código de verificación."
+
+#, python-format
+msgid "Please wait %(seconds)d seconds before requesting another code."
+msgstr "Por favor espera %(seconds)d segundos antes de solicitar otro código."
+
+msgid "A new verification code has been sent to your email."
+msgstr "Se ha enviado un nuevo código de verificación a tu correo."
+
+msgid "If an account with that email exists, a password reset code has been sent."
+msgstr "Si existe una cuenta con ese correo electrónico, se ha enviado un código de restablecimiento de contraseña."
+
+#, python-format
+msgid "Please wait %(seconds)d seconds before requesting another reset code."
+msgstr "Por favor espera %(seconds)d segundos antes de solicitar otro código de restablecimiento."
+
+msgid "The reset code has expired. Please request a new one."
+msgstr "El código de restablecimiento ha expirado. Por favor solicita uno nuevo."
+
+msgid "Maximum reset attempts exceeded. Please request a new code."
+msgstr "Has superado el número máximo de intentos de restablecimiento. Por favor solicita un nuevo código."
+
+#, python-format
+msgid "Invalid reset code. %(remaining)d attempts remaining."
+msgstr "Código de restablecimiento inválido. Te quedan %(remaining)d intentos."
+
+msgid "Password has been reset successfully."
+msgstr "La contraseña se ha restablecido exitosamente."
+
+msgid "Old password is incorrect."
+msgstr "La contraseña anterior es incorrecta."
+
+msgid "Password updated successfully."
+msgstr "Contraseña actualizada exitosamente."
+
+msgid "Email is missing from the Google token."
+msgstr "El correo electrónico no está presente en el token de Google."
+
+#: apps/users/emails.py
+#, python-format
+msgid "Your HookCode Verification Code: %(code)s"
+msgstr "Tu código de verificación de HookCode: %(code)s"
+
+#, python-format
+msgid "Your HookCode Password Reset Code: %(code)s"
+msgstr "Tu código de recuperación de contraseña de HookCode: %(code)s"
+
+# ── Apps: Routers ───────────────────────────────────────────────────────────
+#: apps/routers/permissions.py
 msgid "You must be the owner of this router to perform this action."
 msgstr "Debes ser el propietario de este router para realizar esta acción."
 
-#: apps/routers/permissions.py:71
 msgid "You do not have access to this router."
 msgstr "No tienes acceso a este router."
 
-#: apps/routers/serializers.py:96
+#: apps/routers/serializers.py
 msgid "This user already has a role assigned for the selected router."
 msgstr "Este usuario ya tiene un rol asignado para el router seleccionado."
 
-#: apps/tickets/views.py:96
+msgid "Optional router description."
+msgstr "Descripción opcional del router."
+
+msgid "Token expiration in minutes (default 10)."
+msgstr "Expiración del token en minutos (por defecto 10)."
+
+msgid "Destination filename on the MikroTik router."
+msgstr "Nombre del archivo de destino en el router MikroTik."
+
+#: apps/routers/services.py
+#, python-format
+msgid "No available router identifiers left in the configured range (%(min)d-%(max)d)."
+msgstr "No quedan identificadores de router disponibles en el rango configurado (%(min)d-%(max)d)."
+
+msgid "Unable to generate a unique router password."
+msgstr "No fue posible generar una contraseña única para el router."
+
+msgid "No active VPN node is currently available."
+msgstr "No hay ningún nodo VPN activo disponible en este momento."
+
+msgid "VPN script template 'MikroTik IKEv2 VPN Client' not found."
+msgstr "No se encontró la plantilla de script VPN 'MikroTik IKEv2 VPN Client'."
+
+msgid "Router does not have an api_username configured."
+msgstr "El router no tiene un nombre de usuario API configurado."
+
+msgid "Active VPN node does not have an internal IP configured."
+msgstr "El nodo VPN activo no tiene una IP interna configurada."
+
+# ── Apps: Tickets & Scripts ─────────────────────────────────────────────────
+#: apps/tickets/views.py
 #, python-format
 msgid "Only PENDING tickets can be cancelled. Current status: %(status)s"
 msgstr "Solo los tickets PENDIENTES pueden ser cancelados. Estado actual: %(status)s"
 
-#: apps/users/firebase.py:18
-#, python-format
-msgid "Invalid Firebase ID token: %(error)s"
-msgstr "Token de ID de Firebase inválido: %(error)s"
-
-#: apps/users/serializers.py:33
-msgid "Passwords do not match."
-msgstr "Las contraseñas no coinciden."
-
-#: apps/users/serializers.py:50
-msgid "New passwords do not match."
-msgstr "Las nuevas contraseñas no coinciden."
-
-#: apps/users/serializers.py:60
-msgid "The Firebase ID token obtained from Google Sign-In."
-msgstr "El token de ID de Firebase obtenido desde el inicio de sesión con Google."
-
-#: apps/users/views.py:80
-msgid "Old password is incorrect."
-msgstr "La contraseña anterior es incorrecta."
-
-#: apps/users/views.py:86
-msgid "Password updated successfully."
-msgstr "Contraseña actualizada exitosamente."
-
-#: apps/users/views.py:105
-msgid "Email is missing from the Google token."
-msgstr "El correo electrónico no está presente en el token de Google."
-
-#: config/settings/base.py:114
-msgid "English"
-msgstr "Inglés"
-
-#: config/settings/base.py:115
-msgid "Spanish"
-msgstr "Español"
-
-#: apps/scripts/views.py:57
+#: apps/scripts/views.py
 msgid "You must be the owner of this router to generate download tokens."
 msgstr "Debes ser el propietario de este router para generar tokens de descarga."
 
-#: apps/scripts/views.py:122
 msgid "The provisioning script link is invalid, has expired, or has already been used."
 msgstr "El enlace de script de aprovisionamiento es inválido, ha expirado o ya ha sido utilizado."
 
+#: apps/hotspot/serializers.py
+msgid "Filename must not contain path separators ('/' or '\\')."
+msgstr "El nombre de archivo no debe contener separadores de ruta ('/' o '\\')."
+
+#: apps/hotspot/views.py
+msgid "'router' query param is required."
+msgstr "El parámetro de consulta 'router' es obligatorio."
+
+# ── General Settings ────────────────────────────────────────────────────────
+#: config/settings/base.py
+msgid "English"
+msgstr "Inglés"
+
+msgid "Spanish"
+msgstr "Español"
