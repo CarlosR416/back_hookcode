@@ -55,6 +55,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
+    "core.middleware.SmartLocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -188,6 +189,8 @@ SIMPLE_JWT = {
 
 
 # ── CORS & CSRF ──────────────────────────────────────────────────────────────────
+from corsheaders.defaults import default_headers
+
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
     default="http://localhost:3000",
@@ -198,6 +201,14 @@ CSRF_TRUSTED_ORIGINS = config(
     default="",
     cast=Csv(),
 )
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "accept-language",
+    "x-language",
+]
+CORS_EXPOSE_HEADERS = [
+    "content-language",
+]
+
 
 
 # ── API Docs (drf-spectacular) ──────────────────────────────────────────────────
