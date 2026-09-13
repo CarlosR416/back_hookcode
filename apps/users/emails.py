@@ -8,7 +8,7 @@ import secrets
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 
 from .models import EmailVerificationCode, PasswordResetCode, User
@@ -37,13 +37,21 @@ def generate_and_send_otp(user: User) -> EmailVerificationCode:
         expires_at=expires_at,
     )
 
+    current_lang = translation.get_language() or "en"
+    is_spanish = current_lang.lower().startswith("es")
+
     context = {
         "user": user,
         "code": code,
         "expiration_minutes": expiration_minutes,
+        "is_spanish": is_spanish,
     }
 
-    subject = _("Your HookCode Verification Code: %(code)s") % {"code": code}
+    if is_spanish:
+        subject = f"Tu código de verificación de HookCode: {code}"
+    else:
+        subject = _("Your HookCode Verification Code: %(code)s") % {"code": code}
+
     html_content = render_to_string("users/emails/verify_otp.html", context)
     text_content = render_to_string("users/emails/verify_otp.txt", context)
 
@@ -77,13 +85,22 @@ def generate_and_send_password_reset_otp(user: User) -> PasswordResetCode:
         expires_at=expires_at,
     )
 
+    current_lang = translation.get_language() or "en"
+    is_spanish = current_lang.lower().startswith("es")
+
     context = {
         "user": user,
         "code": code,
         "expiration_minutes": expiration_minutes,
+        "is_spanish": is_spanish,
     }
 
-    subject = _("Your HookCode Password Reset Code: %(code)s") % {"code": code}
+
+    if is_spanish:
+        subject = f"Tu código de recuperación de contraseña de HookCode: {code}"
+    else:
+        subject = _("Your HookCode Password Reset Code: %(code)s") % {"code": code}
+
     html_content = render_to_string("users/emails/password_reset_otp.html", context)
     text_content = render_to_string("users/emails/password_reset_otp.txt", context)
 
@@ -97,4 +114,5 @@ def generate_and_send_password_reset_otp(user: User) -> PasswordResetCode:
     msg.send()
 
     return reset_record
+
 
