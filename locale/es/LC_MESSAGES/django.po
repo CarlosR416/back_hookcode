@@ -110,6 +110,9 @@ msgstr "No se encontró ninguna cuenta con el correo electrónico proporcionado.
 msgid "This account's email is already verified."
 msgstr "El correo de esta cuenta ya está verificado."
 
+msgid "This account is inactive or disabled."
+msgstr "Esta cuenta está inactiva o deshabilitada."
+
 msgid "The verification code has expired. Please request a new one."
 msgstr "El código de verificación ha expirado. Por favor solicita uno nuevo."
 

@@ -257,6 +257,13 @@ class UserViewSet(GenericViewSet):
                 }
             )
 
+        if not user.is_active:
+            return error_response(
+                detail=_("This account is inactive or disabled."),
+                code="account_disabled",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Enforce cooldown to protect Brevo SMTP quota
         cooldown_seconds = getattr(settings, "EMAIL_OTP_RESEND_COOLDOWN_SECONDS", 60)
         latest_code = (
@@ -320,6 +327,13 @@ class UserViewSet(GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if not user.is_active:
+            return error_response(
+                detail=_("This account is inactive or disabled."),
+                code="account_disabled",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Retrieve the latest active password reset code
         otp_record = (
             PasswordResetCode.objects.filter(user=user, is_used=False)
@@ -357,9 +371,7 @@ class UserViewSet(GenericViewSet):
         otp_record.save(update_fields=["is_used"])
 
         user.set_password(password)
-        user.is_email_verified = True
-        user.is_active = True
-        user.save(update_fields=["password", "is_email_verified", "is_active"])
+        user.save(update_fields=["password"])
 
         return success_response(
             {"detail": _("Password has been reset successfully.")}

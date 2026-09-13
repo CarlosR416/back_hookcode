@@ -182,3 +182,23 @@ class UserI18nTests(APITestCase):
             response.data.get("error", {}).get("detail"),
             "Email is missing from the Google token.",
         )
+
+    def test_password_reset_request_inactive_user_in_spanish(self):
+        """Password reset request for inactive user should return localized Spanish message."""
+        self.user.is_active = False
+        self.user.save(update_fields=["is_active"])
+        password_reset_request_url = reverse("auth:users-password-reset-request")
+
+        response = self.client.post(
+            password_reset_request_url,
+            data={"email": self.user.email},
+            format="json",
+            HTTP_ACCEPT_LANGUAGE="es",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.headers.get("Content-Language"), "es")
+        self.assertEqual(
+            response.data.get("error", {}).get("detail"),
+            "Esta cuenta está inactiva o deshabilitada.",
+        )
+

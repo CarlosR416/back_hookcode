@@ -57,12 +57,14 @@ Extends Django's `AbstractUser` with the following customizations:
 5. **Password Reset via 6-Digit OTP:**
    - **Endpoint 1 (Request):** `POST /api/auth/password-reset/request/` accepts an `email`.
      - *Anti-Enumeration:* If the email is not found, a generic success message is returned (`"If an account with that email exists, a password reset code has been sent."`) without revealing whether the email is registered.
+     - *Inactive Account Protection:* If the account exists but has been deactivated (`is_active = False`), the request is rejected with `HTTP 400 Bad Request` (`code="account_disabled"`, `"This account is inactive or disabled."`).
      - *Rate Limiting:* A 60-second cooldown is enforced between consecutive reset requests for the same account.
      - *Dispatch:* Sends a 6-digit OTP code to the user's email using HookCode branded templates.
    - **Endpoint 2 (Confirm):** `POST /api/auth/password-reset/confirm/` accepts `email`, `otp`, `password`, and `password_confirm`.
+     - Validates that the account is active; inactive/disabled accounts are blocked with `HTTP 400 Bad Request` (`code="account_disabled"`).
      - Validates that passwords match and meet security requirements.
      - Verifies that the OTP is valid, unexpired, and has not exceeded 5 attempts.
-     - Upon success, marks the OTP as used (`is_used = True`), updates the password with `user.set_password()`, and marks `is_email_verified = True` and `is_active = True`.
+     - Upon success, marks the OTP as used (`is_used = True`) and updates the password with `user.set_password()`. It does not reactivate inactive or disabled accounts.
 6. **Password Confirmation Enforcement:**
    - Registration (`RegisterSerializer`), password reset (`PasswordResetConfirmSerializer`), and in-place password change (`ChangePasswordSerializer`) strictly require matching `password` and `password_confirm` fields.
 7. **Prior Password Verification on Change:**
@@ -100,7 +102,7 @@ Extends Django's `AbstractUser` with the following customizations:
 |---|---|---|
 | **Registration** | [apps/users/tests/test_registration.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/users/tests/test_registration.py) | Successful user creation (201), re-registration replaces unconfirmed details (201), duplicate verified email rejection (400), password mismatch rejection, missing required fields. |
 | **Email Verification** | [apps/users/tests/test_email_verification.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/users/tests/test_email_verification.py) | Registration sets `is_active=False` & `is_email_verified=False` & sends email, correct OTP sets `is_active=True` & `is_email_verified=True` and returns JWT, already verified account rejection, invalid code attempts, max attempts lockout, expired code, resend cooldown, nonexistent email handling. |
-| **Password Reset OTP** | [apps/users/tests/test_password_reset_otp.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/users/tests/test_password_reset_otp.py) | Request creates OTP and dispatches email, nonexistent email anti-enumeration protection (200), 60s cooldown (429), confirm resets password and updates flags, invalid OTP increments attempts, max attempts lockout, expired code rejection, password mismatch validation. |
+| **Password Reset OTP** | [apps/users/tests/test_password_reset_otp.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/users/tests/test_password_reset_otp.py) | Request creates OTP and dispatches email, nonexistent email anti-enumeration protection (200), deactivated account rejection on request and confirm (400 `account_disabled`), 60s cooldown (429), confirm resets password, invalid OTP increments attempts, max attempts lockout, expired code rejection, password mismatch validation. |
 | **Password** | [apps/users/tests/test_password.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/users/tests/test_password.py) | Successful password update, wrong old password rejection, mismatching confirmation. |
 | **Google Auth** | [apps/users/tests/test_google_auth.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/users/tests/test_google_auth.py) | New user provisioning, existing user login, missing email in token, invalid token rejection (401). |
 | **Internationalization** | [apps/users/tests/test_i18n.py](file:///home/carlos/Desktop/Personal/proyectos-personal/back_wifitickets/apps/users/tests/test_i18n.py) | Spanish and English assertion of password mismatch, wrong password, and missing field errors. |
