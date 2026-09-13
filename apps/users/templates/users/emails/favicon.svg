@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <defs>
+    <!-- Background Gradient: Deep Slate Cybernetic Space -->
+    <linearGradient id="ch-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+
+    <!-- Border Glow: Emerald Node to Indie Violet -->
+    <linearGradient id="ch-border" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.85"/>
+      <stop offset="50%" stop-color="#334155" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0.85"/>
+    </linearGradient>
+
+    <!-- Emerald Glow for Code Bracket -->
+    <linearGradient id="ch-emerald" x1="14" y1="18" x2="26" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+
+    <!-- Indie Violet to Emerald for Hook -->
+    <linearGradient id="ch-hook" x1="39" y1="18" x2="30" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#C084FC"/>
+      <stop offset="40%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+
+    <!-- Ambient Core Glow -->
+    <filter id="ch-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Container Box with Rounded Corners (Brand 16px standard) -->
+  <rect width="64" height="64" rx="16" fill="url(#ch-bg)"/>
+  <rect x="1" y="1" width="62" height="62" rx="15" fill="none" stroke="url(#ch-border)" stroke-width="1.5"/>
+
+  <!-- Core Ambient Glow -->
+  <circle cx="32" cy="32" r="15" fill="#10B981" opacity="0.15" filter="url(#ch-glow)"/>
+
+  <!-- Left Code Bracket: < in Emerald Node -->
+  <path d="M 25 18 L 14 32 L 25 46"
+        stroke="url(#ch-emerald)"
+        stroke-width="5"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- Right Code Hook: starts as closing bracket >, swoops around into an elegant cyber hook -->
+  <path d="M 39 18 L 49 27 C 53 31 53 39 48 44 C 42 50 32 49 28 42 C 26 37 29 33 34 33"
+        stroke="url(#ch-hook)"
+        stroke-width="5"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- Connected Pulse Node (Active Connection) -->
+  <circle cx="34" cy="33" r="2.5" fill="#34D399"/>
+</svg>
